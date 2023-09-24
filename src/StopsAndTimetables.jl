@@ -5,7 +5,7 @@ import Dates
 using Dates: Date, ISODateFormat, format, dayname
 using IniFile
 
-export StopsAndTimeTable
+export StopsAndTimetable
 
 # For storing data relevant to a ServiceJourney.
 struct StopsAndTimetable
