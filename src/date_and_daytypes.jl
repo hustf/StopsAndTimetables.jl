@@ -1,6 +1,3 @@
-import Dates
-using Dates: Date, ISODateFormat, format, dayname
-const STO_TABLE_DIR = joinpath(@__DIR__, "..", "stops", "15_More og Romsdal_latest")
 """
     OperatingPeriod_id(date::String; file_needle = "_shared_data")
     OperatingPeriod_id(date::Date; file_needle = "_shared_data")

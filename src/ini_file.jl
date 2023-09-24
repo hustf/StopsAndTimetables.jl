@@ -8,24 +8,50 @@ function _prepare_init_file_configuration(io)
         # Configuration file for 'StopsAndTimetables'.
         # You can modify and save the values here. To start over from 'factory settings':
         # Delete this file. A new file will be created next time configurations are used.
+        #
+        # NOTE: You need to download and unzip files from https://developer.entur.org/stops-and-timetable-data
+        #       Then place the .xml files in the directories below. 
+        # Stops files: E.g. tiamat-export-03_Oslo-202309231200015816.xml
+        # Timetable files: E.g. MOR_MOR-Line-3_3_Alesund-Valderoya-Vigra.xml
+        #                       _MOR_shared_data.xml         
         """
     println(io, msg)
     #
     conta = Inifile()
-
-    # TODO move data dir and default filename here.
-    # Lines in arbitrary order from file
-    set(conta, "http fields", "User agent", "StopsAndTimetables.jl 0.0.1 temp_script")
-    set(conta, "api server", "baseurl",  "https://nvdbapiles-v3.test.atlas.vegvesen.no/")
-    set(conta, "http fields", "Accept", "application/vnd.vegvesen.nvdb-v3-rev2+json") # temp
-
+    set(conta, "Directories", "Stopstables", joinpath(homedir(), "StopsAndTimetables", "Stopstables"))
+    set(conta, "Directories", "Timetables", joinpath(homedir(), "StopsAndTimetables", "Timetables"))
     # To file..
+    println(io, conta)
+    msg = """
+        # The default stops file resides in memory while detailing a request.
+        # The other xml files are checked in sequence,
+        # so place the counties most likely to be visisted by routes you 
+        # are interested in on second, third, etc.
+        # We leave out the last part of file names here, because they
+        # are likely to change with updates of the data.
+        # Simply delete old xml files to avoid conflict when updating.
+        """
+    println(io, msg)
+    conta = Inifile() # This is a trick to be able to have comments in between sections.
+    set(conta, "Filenames", "Other stops files by pri", repr([
+        "tiamat-export-50_Trond"
+        "tiamat-export-46_Vestl"
+        "tiamat-export-34_Innla"
+        "tiamat-export-30_Viken"
+        "tiamat-export-38_Vestf"
+        "tiamat-export-03_Oslo-"
+        "tiamat-export-11_Rogal"
+        "tiamat-export-42_Agder"
+        "tiamat-export-18_Nordl"
+        "tiamat-export-54_Troms"]))
+    set(conta, "Filenames", "Default stops file", "tiamat-export-15_More ")
     println(io, conta)
 end 
 
 
 """
     get_config_value(sect::String, key::String)
+    get_config_value(sect, key, type::DataType; nothing_if_not_found = false)
 
 Instead of passing long argument lists, we store configuration in a text file.
 """
@@ -64,6 +90,12 @@ function get_config_value(sect, key, type::DataType; nothing_if_not_found = fals
     isnothing(st) && return nothing
     tryparse(type, st)
 end
+
+function get_config_value(sect, key, ::Type{Vector{String}}; nothing_if_not_found = false)
+    st = get_config_value(sect, key; nothing_if_not_found)
+    isnothing(st) && return nothing
+    split(replace(st, "\"" => "")[2:end - 1], ", ")
+end 
 
 
 "delete_init_file()"

@@ -1,12 +1,3 @@
-using EzXML
-"There are several namespaces in the file,
-but one is default. For elements that do 
-not have a prefix (i.e. is in the default namespace)
-we need to invent one during searches. Let's prefix
-unspecified namespace elements with 'x':"
-const NS = ["x" => "http://www.netex.org.uk/netex"]
-const TIME_TABLE_DIR = joinpath(@__DIR__, "..", "timetables", "rb_mor-aggregated-netex\\")
-
 function filenames_xml(str_needle; pth = TIME_TABLE_DIR)
     @assert isdir(pth)
     fs = filter(f -> endswith(f, ".xml"), readdir(pth, join = true))

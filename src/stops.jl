@@ -1,7 +1,8 @@
-using EzXML
-const STOPS_TABLE_DIR = joinpath(@__DIR__, "..", "stops")
-
-function stop_Places(;fna = joinpath(STOPS_TABLE_DIR, "tiamat-export-15_More og Romsdal-202309231207494696.xml"))
+function stop_Places()
+    f = DEFAULT_STOPS_FILE
+    candidates = readdir(STOPS_TABLE_DIR)
+    file = first(filter(fi -> startswith(fi, f), candidates))
+    fna = joinpath(STOPS_TABLE_DIR, file)
     @assert isfile(fna) fna
     r = root(readxml(fna))
     findfirst("/x:PublicationDelivery/x:dataObjects/x:SiteFrame/x:stopPlaces", r, NS)
@@ -32,19 +33,9 @@ function StopPlace_typed(stopPlaces::EzXML.Node, stop_imported_id)
     findfirst(xp, stopPlaces, NS)
 end
 function StopPlace_not_local(st, sq)
-    # Local file is assumed checked elsewhere:
-    # "tiamat-export-15_More "
-    searchseq = [
-    "tiamat-export-50_Trond"
-    "tiamat-export-46_Vestl"
-    "tiamat-export-34_Innla"
-    "tiamat-export-30_Viken"
-    "tiamat-export-38_Vestf"
-    "tiamat-export-03_Oslo-"
-    "tiamat-export-11_Rogal"
-    "tiamat-export-42_Agder"
-    "tiamat-export-18_Nordl"
-    "tiamat-export-54_Troms"]
+    # Local stops file is assumed checked elsewhere.
+    # This is much slower.
+    searchseq = OTHER_STOPS_FILE_BY_PRI
     candidates = readdir(STOPS_TABLE_DIR)
     for fnam in searchseq
         for ca in candidates

@@ -1,5 +1,3 @@
-using Geodesy
-
 function lat_lon_to_lla(lat, lon)
     @assert endswith(lat, "°N") || endswith(lat, "°S")
     @assert endswith(lon, "°E") || endswith(lat, "°W")

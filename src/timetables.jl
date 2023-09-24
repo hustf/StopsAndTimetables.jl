@@ -1,9 +1,4 @@
 """
-An in-memory lookup dictionary for speed.
-"""
-const STOPDICT = Dict{String, NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}}}()
-
-"""
     journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places())
     ---> Tuple{Vector{String}, Vector{Int64}, Vector{Int64}}}
 
@@ -34,8 +29,6 @@ julia> hcat(t, n, p)
 ```
 """
 function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places())
-    # TODO: avoid allocating by passing nodes as keyword arguments where possible.
-    # TODO: Also check type stability. Lookups should be faster than they are.
     timetabledpassingtime = TimetabledPassingTime(journey_node)
     # 0.000417 seconds (278 allocations: 11.875 KiB)
     time_str = nodecontent.(DepartureTime_or_ArrivalTime.(timetabledpassingtime))
@@ -52,7 +45,6 @@ function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.
             push!(new_ref, ref)
         end
     end
-    # OLD: new_ref = filter(s -> ! haskey(STOPDICT, s), scheduledstoppointref_str)
     found_stop_name, found_position = name_and_location_of_stop(new_ref; stopplaces)
     for (ref, nam, pos) in zip(new_ref, found_stop_name, found_position)
         push!(STOPDICT, ref => (name = nam, x = pos[1], y = pos[2]))
@@ -69,7 +61,7 @@ function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.
         end
         println()
         # Every stop is now in the dict. Since this is reasonably fast, we can just as easily take everything 
-        # from there (again)
+        # from the dict. We could speed this up further by using e.g. Dictionaries.jl
         ntuples = map(scheduledstoppointref_str) do ref
             get(STOPDICT, ref, (name = "", x = 0, y = 0))
         end
