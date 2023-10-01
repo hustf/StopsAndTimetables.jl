@@ -1,11 +1,11 @@
 """
-    OperatingPeriod_id(date::String; file_needle = "_shared_data")
-    OperatingPeriod_id(date::Date; file_needle = "_shared_data")
+    OperatingPeriod_id(date::String; inc_file_needle = "_shared_data")
+    OperatingPeriod_id(date::Date; inc_file_needle = "_shared_data")
     OperatingPeriod_id(date::Date, r::EzXML.Node)
     ---> Vector{EzXML.Node}
 
 The date format must be yyyy-mm-dd.
-This function finds and parses *file_needle*.xml.
+This function finds and parses *inc_file_needle*.xml.
 
 
 # Example
@@ -22,16 +22,19 @@ julia> idnodes = OperatingPeriod_id("2023-09-04")
 
 
 """
-function OperatingPeriod_id(date::String; file_needle = "_shared_data")
+function OperatingPeriod_id(date::String; inc_file_needle = "_shared_data")
     dt = tryparse(Date, date)
     if isnothing(dt) || Dates.year(dt) < 2000
         throw(ArgumentError("Date format not yyyy-mm-dd: $date"))
     end
-    OperatingPeriod_id(dt; file_needle)
+    OperatingPeriod_id(dt; inc_file_needle)
 end
-function OperatingPeriod_id(date::Date; file_needle = "_shared_data")
-    rs = Roots(file_needle)
-    @assert length(rs) == 1
+function OperatingPeriod_id(date::Date; inc_file_needle = "_shared_data")
+    rs = roots(; inc_file_needle)
+    @assert length(rs) == 1  """We could not identify the shared file to use. There are $(length(rs)):
+        \t$rs
+        \tinc_file_needle = "$inc_file_needle"
+        """
     OperatingPeriod_id(date, rs[1])
 end
 function OperatingPeriod_id(date::Date, r::EzXML.Node)
@@ -49,7 +52,7 @@ function OperatingPeriod_id(date::Date, r::EzXML.Node)
 end
 
 """
-     DayTypeAssignment(date; file_needle = "_shared_data")
+     DayTypeAssignment(date; inc_file_needle = "_shared_data")
      ---> Vector{EzXML.Node}
  
  # Example
@@ -63,8 +66,8 @@ end
 
  ```
  """
-function DayTypeAssignment(date; file_needle = "_shared_data")
-    id_nodes = OperatingPeriod_id(date; file_needle)
+function DayTypeAssignment(date; inc_file_needle = "_shared_data")
+    id_nodes = OperatingPeriod_id(date; inc_file_needle)
     length(id_nodes) == 0 && return Vector{EzXML.Node}()
     dta = findfirst("//x:dayTypeAssignments", first(id_nodes), NS)
     period_ass = map(nodecontent.(id_nodes)) do string_id
@@ -78,21 +81,21 @@ function DayTypeAssignment(date; file_needle = "_shared_data")
 end
 
 """
-    DayTypeRef_ref(date; file_needle = "_shared_data")
+    DayTypeRef_ref(date; inc_file_needle = "_shared_data")
     ---> Vector{EzXML.Node(<ATTRIBUTE_NODE[ref]@0x000001a805a3ace0>)} 
 
 Since this returns specifically attribute nodes, we can access the values with `nodecontent`
 """
-function DayTypeRef_ref(date; file_needle = "_shared_data")
-    assignment_nodes = DayTypeAssignment(date; file_needle)
+function DayTypeRef_ref(date; inc_file_needle = "_shared_data")
+    assignment_nodes = DayTypeAssignment(date; inc_file_needle)
     map(assignment_nodes) do n
         findfirst("x:DayTypeRef/@ref", n, NS)
     end
 end
 
 """
-    DayType_id(date; file_needle = "_shared_data")
-    DayType_id(date::Date; file_needle = "_shared_data")
+    DayType_id(date; inc_file_needle = "_shared_data")
+    DayType_id(date::Date; inc_file_needle = "_shared_data")
     ---> Vector{EzXML.Node}
 
 id attribute nodes of daytypes where 
@@ -126,15 +129,15 @@ julia> DayType_id("2023-09-23")
  "MOR:DayType:FJ009_Sa_4"
 ```
 """
-function DayType_id(date; file_needle = "_shared_data")
+function DayType_id(date; inc_file_needle = "_shared_data")
     dt = tryparse(Date, date)
     if isnothing(dt) || Dates.year(dt) < 2000
         throw(ArgumentError("Date format not yyyy-mm-dd: $date"))
     end
-    DayType_id(dt; file_needle)
+    DayType_id(dt; inc_file_needle)
 end
-function DayType_id(date::Date; file_needle = "_shared_data")
-    dtref = DayTypeRef_ref(date; file_needle)
+function DayType_id(date::Date; inc_file_needle = "_shared_data")
+    dtref = DayTypeRef_ref(date; inc_file_needle)
     length(dtref) == 0 && return Vector{EzXML.Node}()
     dty = findfirst("//x:dayTypes", first(dtref), NS)
     node_or_nothing = map(dtref) do dtr

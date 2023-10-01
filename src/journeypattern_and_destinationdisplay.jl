@@ -1,5 +1,5 @@
 """
-    DestinationDisplay_name(destination_display_ref_str; file_needle = "_shared_data")
+    DestinationDisplay_name(destination_display_ref_str; inc_file_needle = "_shared_data")
     ---> EzXML.Node
 
 # Example
@@ -11,9 +11,9 @@ julia> nodecontent(ans)
 "Innlandet"
 ```
 """
-function DestinationDisplay_name(destination_display_ref_str; file_needle = "_shared_data")
+function DestinationDisplay_name(destination_display_ref_str; inc_file_needle = "_shared_data")
     @assert contains(destination_display_ref_str, ":DestinationDisplay:") destination_display_ref_str
-    rs = Roots(file_needle)
+    rs = roots(;inc_file_needle)
     @assert length(rs) == 1
     xp = "x:dataObjects/x:CompositeFrame/x:frames/x:ServiceFrame/x:destinationDisplays"
     destinationDisplays = findfirst(xp, rs[1], NS)
@@ -53,7 +53,7 @@ end
 
 
 """
-    DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; file_needle = "_shared_data")
+    DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = "_shared_data")
     ---> Vector{EzXML.Node}
 
 # Example
@@ -73,8 +73,8 @@ julia> DestinationDisplay_name(servicejourneys) .|> nodecontent
  "Kristiansund-Molde-Ålesund"
 ```
 """
-function DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; file_needle = "_shared_data")
-    rs = Roots(file_needle)
+function DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = "_shared_data")
+    rs = roots(;inc_file_needle)
     @assert length(rs) == 1
     xp = "x:dataObjects/x:CompositeFrame/x:frames/x:ServiceFrame/x:destinationDisplays"
     destinationDisplays = findfirst(xp, rs[1], NS)

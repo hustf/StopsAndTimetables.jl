@@ -1,9 +1,9 @@
 """
-    Operator_name(operatorref; file_needle = "_shared_data")
+    Operator_name(operatorref; inc_file_needle = "_shared_data")
     Operator_name(operatorref::String, r::EzXML.Node)
     Operator_name(servicejourney::EzXML.Node)
         ---> EzXML.Node
-    Operator_name(servicejourneys::Vector{EzXML.Node}; file_needle = "_shared_data")
+    Operator_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = "_shared_data")
         ---> Vector{EzXML.Node}
 
 
@@ -20,8 +20,8 @@ julia> nodecontent(ans)
 julia> 
 ```
 """
-function Operator_name(operatorref; file_needle = "_shared_data")
-    rs = Roots(file_needle)
+function Operator_name(operatorref; inc_file_needle = "_shared_data")
+    rs = roots(;inc_file_needle)
     @assert length(rs) == 1
     organisations = findfirst("x:dataObjects/x:CompositeFrame/x:frames/x:ResourceFrame/x:organisations", rs[1], NS)
     Operator_name(operatorref, organisations)
@@ -33,8 +33,8 @@ function Operator_name(servicejourney::EzXML.Node)
     isnothing(ref) && return ref
     Operator_name(nodecontent(ref))
 end
-function Operator_name(servicejourneys::Vector{EzXML.Node}; file_needle = "_shared_data")
-    rs = Roots(file_needle)
+function Operator_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = "_shared_data")
+    rs = roots(;inc_file_needle)
     @assert length(rs) == 1
     xp = """x:OperatorRef/@ref"""
     refs = map(servicejourneys) do servicejourney

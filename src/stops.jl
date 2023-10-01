@@ -4,16 +4,13 @@ function stop_Places()
     file = first(filter(fi -> startswith(fi, f), candidates))
     fna = joinpath(STOPS_TABLE_DIR, file)
     @assert isfile(fna) fna
-    r = root(readxml(fna))
+    r = EzXML.root(readxml(fna))
     findfirst("/x:PublicationDelivery/x:dataObjects/x:SiteFrame/x:stopPlaces", r, NS)
 end
 
 function name_and_location_of_stop(scheduledstoppointref_str::Vector{String}; stopplaces::EzXML.Node = stop_Places())
     stopplace = StopPlace_general_argument(scheduledstoppointref_str; stopplaces)
-    stop_name = map(stopplace) do stopp
-        Name = findfirst("x:Name", stopp, NS)
-        nodecontent(Name)
-    end
+    stop_name = nodecontent.(descendent_Name.(stoppplace))
     position = easting_northing.(stopplace)
     stop_name, position
 end

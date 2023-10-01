@@ -1,18 +1,14 @@
 module StopsAndTimetables
 import EzXML
-using EzXML: findfirst, nodecontent
-import Dates
-using Dates: Date, ISODateFormat, format, dayname
+using EzXML: findfirst, nodecontent, readxml, isattribute
+import Dates, Logging
+using Dates: Date, ISODateFormat, format, dayname, Time
 using IniFile
 import Geodesy
 using Geodesy: LLA, UTMfromLLA
 
-export StopsAndTimetable
 
-# For storing data relevant to a ServiceJourney.
-struct StopsAndTimetable
-    x::String
-end
+export StopsAndTime, DEFAULT_SELECTORS, journeys
 
 include("ini_file.jl")
 
@@ -46,3 +42,4 @@ include("geodesy.jl")
 include("exported.jl")
 
 end
+# TODO: <ForAlighting>false</ForAlighting> ForBoarding

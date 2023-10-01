@@ -1,10 +1,9 @@
 """
-    Line_name(node::EzXML.Node)
-    Line_name(nodes::Vector{EzXML.Node})
+    Line_Name_and_TransportMode_string(node::EzXML.Node)
+    Line_Name_and_TransportMode_string(nodes::Vector{EzXML.Node})
+    ---> Tuple{Vector{String},Vector{String}}
 
 node can be a servicejourney or another node containing a LineRef.
-
-You could use the name node as a reference for finding e.g. PublicCode.
 
 There is only one line per file containing servicejourneys.
 
@@ -13,35 +12,51 @@ There is only one line per file containing servicejourneys.
 julia> s = first(ServiceJourney("MOR:DayType:NB249_Mo_8"))
 EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d597fd90e0>)
 
-julia> nodecontent(Line_name(s))
+julia> Line_Name_and_TransportMode_string(s)
 "Brattvåg-Skjeltene-Brattvåg"
 
-julia> nodecontent.((Line_name(ServiceJourney("MOR:DayType:NB249_Mo_8"))))
-3-element Vector{String}:
- "Brattvåg-Skjeltene-Brattvåg"
- "Brattvåg-Skjeltene-Brattvåg"
- "Brattvåg-Skjeltene-Brattvåg"
+julia> Line_Name_and_TransportMode_string(ServiceJourney("MOR:DayType:NB249_Mo_8"))
+(["Ekspressen", "Ekspressen", "Ekspressen", "Ekspressen", "Ekspressen", "Valldal-Sjøholt-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Skjeltene-Brattvåg"  …  "Brattvåg-Skjeltene-Brattvåg", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Skodje-Ålesund", "Skodje-Ålesund", "Skodje-Ålesund", "Skodje-Ålesund", "Skodje-Ålesund"], ["bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus"  …  "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus"])
 ```
 """
-function Line_name(node::EzXML.Node)
+function Line_Name_and_TransportMode_string(node::EzXML.Node)
+    line = Line(node)
+    n = nodecontent(descendent_Name(line))
+    xp = "x:TransportMode"
+    t = nodecontent(findfirst(xp, line, NS))
+    n, t
+end
+function Line_Name_and_TransportMode_string(nodes::Vector{EzXML.Node})
+    line = Line(nodes)
+    n = nodecontent.(descendent_Name.(line))
+    xp = "x:TransportMode"
+    t = map(line) do l 
+        nodecontent(findfirst(xp, l, NS))
+    end
+    n, t
+end
+
+function Line(node::EzXML.Node)
     xp = """x:LineRef/@ref"""
     ref = findfirst(xp, node, NS)
     if isnothing(ref)
         throw(ArgumentError("node must contain a LineRef."))
     end
     refstr = nodecontent(ref)
-    xp = """//x:lines/x:Line[@id = "$refstr"]/x:Name"""
+    xp = """//x:lines/x:Line[@id = "$refstr"]"""
     findfirst(xp, node, NS)
 end
-function Line_name(nodes::Vector{EzXML.Node})
+
+
+function Line(nodes::Vector{EzXML.Node})
     xp = """x:LineRef/@ref"""
     refs = map(nodes) do node
         findfirst(xp, node, NS)
     end
     @assert refs isa Vector{EzXML.Node}
     refstr = nodecontent.(refs)
-    lines = map(zip(nodes, refstr)) do (n, r)
-        xp = """../../../x:ServiceFrame/x:lines/x:Line [@id = "$r"] / x:Name"""
+    map(zip(nodes, refstr)) do (n, r)
+        xp = """../../../x:ServiceFrame/x:lines/x:Line [@id = "$r"]"""
         findfirst(xp, n, NS)
     end
 end

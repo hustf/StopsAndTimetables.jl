@@ -25,7 +25,7 @@ function lat_lon_to_utm(lat, lon; utm_zone = 33)
     lat_lon_to_utm(ptlla; utm_zone)
 end
 function lat_lon_to_utm(point_lla; utm_zone = 33)
-    t = UTMfromLLA(utm_zone, true, wgs84)
+    t = UTMfromLLA(utm_zone, true, Geodesy.wgs84)
     t(point_lla)
 end
 

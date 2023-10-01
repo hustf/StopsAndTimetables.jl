@@ -11,7 +11,7 @@ julia> daytype_strings = nodecontent.(DayType_id("2023-09-18"))
  "MOR:DayType:NB248_Mo_13"
  ⋮
 
- julia> servicejourneys = ServiceJourney(daytype_strings; file_needle = "Line")
+ julia> servicejourneys = ServiceJourney(daytype_strings; inc_file_needle = "Line")
  4276-element Vector{EzXML.Node}:
   EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x0000023a24c37970>)
   ⋮
@@ -29,6 +29,7 @@ julia> hcat(t, n, p)
 ```
 """
 function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places())
+    # This is fast, while stopplaces may be slow. CONSIDER moving out of here.
     timetabledpassingtime = TimetabledPassingTime(journey_node)
     # 0.000417 seconds (278 allocations: 11.875 KiB)
     time_str = nodecontent.(DepartureTime_or_ArrivalTime.(timetabledpassingtime))
@@ -73,8 +74,8 @@ end
 
 
 """
-    ServiceJourney(daytype_strings::Vector{String}; file_needle ="31")
-    ServiceJourney(daytype_string; file_needle ="31")
+    ServiceJourney(daytype_strings::Vector{String}; inc_file_needle ="31")
+    ServiceJourney(daytype_string; inc_file_needle ="31")
     ---> Vector{EzXML.Node}
 
 # Example
@@ -84,7 +85,7 @@ In the example, we find the operator name for indivual journeys. This is slow.
 ```
 julia> daytype_strings = ["MOR:DayType:NB248_Mo_13", "MOR:DayType:F1_Mo_2", "MOR:DayType:F1_Mo_24"];
 
-julia> nodes = ServiceJourney(daytype_strings; file_needle ="1054")
+julia> nodes = ServiceJourney(daytype_strings; inc_file_needle ="1054")
 80-element Vector{EzXML.Node}:
  EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241ba04b170>)
  EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241ba04f9f0>)
@@ -112,8 +113,8 @@ julia> ServiceJourney("MOR:DayType:NB249_Mo_8")
  EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d59e607560>)
 ```
 """
-function ServiceJourney(daytype_strings::Vector{String}; file_needle ="31")
-    rs = Roots(file_needle)
+function ServiceJourney(daytype_strings::Vector{String}; kw...)
+    rs = roots(;kw...)
     v = Vector{EzXML.Node}()
     conditions = join(["@ref = \"$s\"" for s in daytype_strings], " or ")
     xp = """//x:ServiceJourney/x:dayTypes/x:DayTypeRef[$conditions]/../.."""
@@ -125,8 +126,8 @@ function ServiceJourney(daytype_strings::Vector{String}; file_needle ="31")
     end
     v
 end
-function ServiceJourney(daytype_string; file_needle ="31")
-    rs = Roots(file_needle)
+function ServiceJourney(daytype_string; kw...)
+    rs = roots(kw...)
     xp = """//x:ServiceJourney/x:dayTypes/x:DayTypeRef[@ref = \"$daytype_string\"]/../.."""
     v = Vector{EzXML.Node}()
     for r in rs
@@ -231,6 +232,23 @@ function ScheduledStopPointRef_ref(timetabledpassingtime::EzXML.Node)
         /x:ScheduledStopPointRef/@ref
     """
     findfirst(xp, timetabledpassingtime, NS)
+end
+
+"""
+    start_and_end_time(journey_node::EzXML.Node)
+    ---> Tuple{Time, Time}
+
+# Example
+```
+julia> start_and_end_time(s)[1]
+
+```
+"""
+function start_and_end_time(journey_node::EzXML.Node)
+    v = TimetabledPassingTime(journey_node)
+    a = nodecontent(DepartureTime_or_ArrivalTime(first(v)))
+    b = nodecontent(DepartureTime_or_ArrivalTime(last(v)))
+    Time(a), Time(b)
 end
 
 
