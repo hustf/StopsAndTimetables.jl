@@ -1,6 +1,8 @@
 """
     journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places())
     ---> Tuple{Vector{String}, Vector{Int64}, Vector{Int64}}}
+    journey_time_name_position(journey_node::Vector{EzXML.Node}; stopplaces::EzXML.Node = stop_Places())
+    ---> Tuple{Vector{Vector{String}}, Vector{Vector{Int64}}, Vector{Vector{Int64}}}}
 
 journey_node is a ServiceJourney, but this could be extended to cover other journey types.
 
@@ -28,15 +30,13 @@ julia> hcat(t, n, p)
  "21:35:00"  "Molde trafikkterminal"         (100121, 6980683)
 ```
 """
-function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places())
-    # This is fast, while stopplaces may be slow. CONSIDER moving out of here.
+function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places()) # TODO  early exit on keywords
+    # This may be fast, while stopplaces may be slow. CONSIDER moving out of here.
     timetabledpassingtime = TimetabledPassingTime(journey_node)
     # 0.000417 seconds (278 allocations: 11.875 KiB)
     time_str = nodecontent.(DepartureTime_or_ArrivalTime.(timetabledpassingtime))
     #   222.168 ms (413 allocations: 34.68 KiB)
     scheduledstoppointref_str = nodecontent.(ScheduledStopPointRef_ref.(timetabledpassingtime))
-
-
     ntuples = map(scheduledstoppointref_str) do ref
         get(STOPDICT, ref, (name = "", x = 0, y = 0))
     end
@@ -50,9 +50,8 @@ function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.
     for (ref, nam, pos) in zip(new_ref, found_stop_name, found_position)
         push!(STOPDICT, ref => (name = nam, x = pos[1], y = pos[2]))
     end
-
     if length(new_ref) > 0
-        # Some feedback. This is what we just spent time on:
+        # Some feedback. This is what we just spent time on (and will not repeat):
         printstyled("\n$(length(new_ref)) new stop points\n", color = :yellow)
         newtuples = map(new_ref) do ref
             get(STOPDICT, ref, (name = "--", x = 0, y = 0))
@@ -71,7 +70,17 @@ function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.
     position = [(tup.x, tup.y) for tup in ntuples]
     time_str, stop_name, position
 end
-
+function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; stopplaces::EzXML.Node = stop_Places())
+    # A vector of tuples
+     tsp = map(journey_nodes) do n
+        journey_time_name_position(n; stopplaces)
+     end
+     # Three nested vectors
+     time_str = [tup[1] for tup in tsp]
+     stop_name = [tup[2] for tup in tsp]
+     position = [tup[3] for tup in tsp]
+     time_str, stop_name, position
+end
 
 """
     ServiceJourney(daytype_strings::Vector{String}; inc_file_needle ="31")

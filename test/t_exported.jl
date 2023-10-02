@@ -1,10 +1,25 @@
 using Test
 using StopsAndTimetables
-using StopsAndTimetables: semantic_contains
+#using StopsAndTimetables: semantic_contains
 import Dates
 using Dates: Time
 @test_throws MethodError journeys(;inc_file_needle = 99)
 @test_throws ArgumentError journeys(;nokeyword = 99)
+
+
+# temporary until stops logic is revised...
+inc_file_needle = "MOR-line-3"
+inc_linename_needle = "Hjørungavåg"
+vsat = journeys(;inc_file_needle, inc_linename_needle)
+display.(vsat);
+inc_linename_needle = "Dimna"
+inc_date_match = "2023-09-20"
+vsat = journeys(;inc_file_needle, inc_linename_needle, inc_date_match)
+display.(vsat);
+
+
+
+# Very slow now.....
 @test length(journeys()) == 4250
 inc_file_needle = "Volda"
 @test length(journeys(;inc_file_needle)) == 298

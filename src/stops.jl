@@ -10,7 +10,7 @@ end
 
 function name_and_location_of_stop(scheduledstoppointref_str::Vector{String}; stopplaces::EzXML.Node = stop_Places())
     stopplace = StopPlace_general_argument(scheduledstoppointref_str; stopplaces)
-    stop_name = nodecontent.(descendent_Name.(stoppplace))
+    stop_name = nodecontent.(descendent_Name.(stopplace))
     position = easting_northing.(stopplace)
     stop_name, position
 end

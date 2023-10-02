@@ -8,17 +8,19 @@ StopsAndTime contains timetable and stops data for a single journey.
 A "query" returns a vector of StopsAndTime.
 """
 struct StopsAndTime
-    file::String
-    date::Date
-    timespan::Tuple{Time, Time}
+    time_str
+    stop_name
+    position
+    destinationdisplay_name
+    line_name
+    transport_mode
+    operator_name
+    timespan
+    servicejourney_name
+    servicejourney
 end
 
-alwaystrue(n) = true
-alwaysfalse(n) = false
-
 # Const later
-
-
 SelectorType = @NamedTuple begin
     inc_file_needle::String
     exc_file_needle::String
@@ -52,12 +54,12 @@ DEFAULT_SELECTORS = SelectorType((
     exc_file_needle = "tmp",              # Exclude timetable files containing "tmp". Note: 7-bit ASCII for some reason (no æøå)
     exc_file_func = (n) -> false,         # This default function excludes no filenames.
     #
-    inc_date_match = "2023-09-28",        # Date to include. Returned result generally include other dates, too. 
-    #   
+    inc_date_match = "2023-09-28",        # Date to include. Returned result generally include other dates, too.
+    #
     inc_time_match = nothing,             # Specific time to include, i.e. must be in the open interval start time to end time
-    # 
-    inc_operatorname_needle = "",         # E.g. "Vy", "Boreal", "Norled". 
-    # 
+    #
+    inc_operatorname_needle = "",         # E.g. "Vy", "Boreal", "Norled".
+    #
     inc_linename_needle = "",             # E.g.  "Ekspressen Volda-Ålesund"
     #
     inc_destinationdisplayname_func = (n)->true,  # E.g. (n) -> semantic_contains(n, "skole") || semantic_contains(n, "skule")
@@ -87,7 +89,7 @@ function journeys(; kw...)
         nokwd = setdiff(keys(selectors_lenient), keys(DEFAULT_SELECTORS))
         list = join(string.(keys(DEFAULT_SELECTORS)), ", ")
         msg = """Unrecognized keyword for `journeys`: $nokwd
-            \tAcceptable keywords: 
+            \tAcceptable keywords:
             \t$list
             """
         throw(ArgumentError(msg))
@@ -96,13 +98,14 @@ function journeys(; kw...)
 end
 
 function journeys(kw::SelectorType)
+    vsat = StopsAndTime[]
     daytype = nodecontent.(DayType_id(kw.inc_date_match))
-    isempty(daytype) && return StopsAndTime[]
+    isempty(daytype) && return vsat
     report_length("daytype", daytype; prefix = "\n ✂ $(kw.inc_date_match) ")
     #
     servicejourneys = ServiceJourney(daytype; filter_kw(kw, "_file_")...)
     report_length("journeys", servicejourneys; prefix = " ✂file ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
     servicejourney_name = nodecontent.(descendent_Name.(servicejourneys))
     if ! isempty(kw.inc_servicejourneyname_needle)
@@ -111,7 +114,7 @@ function journeys(kw::SelectorType)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ servicejourneyname ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
     timespans = start_and_end_time.(servicejourneys)
     if ! isnothing(kw.inc_time_match)
@@ -120,7 +123,7 @@ function journeys(kw::SelectorType)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ time ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
     operator_name = Operator_name(servicejourneys) .|> nodecontent
     if ! isempty(kw.inc_operatorname_needle)
@@ -129,7 +132,7 @@ function journeys(kw::SelectorType)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ operatorname ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
     line_name, transport_mode = Line_Name_and_TransportMode_string(servicejourneys)
     if ! isempty(kw.inc_linename_needle)
@@ -138,7 +141,7 @@ function journeys(kw::SelectorType)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ linename ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
     if ! isempty(kw.inc_transportmode_needle)
         filter_all_based_on_first_vector!( transport_mode, line_name, operator_name, timespans, servicejourney_name, servicejourneys) do nam
@@ -146,24 +149,32 @@ function journeys(kw::SelectorType)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ transportmode ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
-    destinationdisplay_name = DestinationDisplay_name(servicejourneys) .|> nodecontent   
-    filter_all_based_on_first_vector!(destinationdisplay_name, line_name,  transport_mode, operator_name, 
+    destinationdisplay_name = DestinationDisplay_name(servicejourneys) .|> nodecontent
+    filter_all_based_on_first_vector!(destinationdisplay_name, line_name,  transport_mode, operator_name,
         timespans, servicejourney_name, servicejourneys) do nam
         kw.inc_destinationdisplayname_func(nam)
     end
     report_length("journeys", servicejourneys; prefix = " ✂ destinationdisplayname ")
-    isempty(servicejourneys) && return StopsAndTime[]
+    isempty(servicejourneys) && return vsat
     #
-    for s in servicejourneys
-       time_str, stop_name, position = journey_time_name_position(s; stopplaces = stop_Places())
+    # TODO: filtering, exc and inc.
+    # Note: We use a string type for time here, because we want to have 'empty time', which would be "".
+    # TODO: Reconsider, is that logical? It would be an empty vector.
+    time_str, stop_name, position = journey_time_name_position(servicejourneys)
+    filter_all_based_on_first_vector!(time_str, stop_name, position, destinationdisplay_name, line_name,  transport_mode, operator_name,
+        timespans, servicejourney_name, servicejourneys) do t
+            ! isempty(t)
     end
-
-
-
-
-
+    #
+    for i in eachindex(servicejourneys)
+        push!(vsat, StopsAndTime(
+            time_str[i], stop_name[i], position[i], destinationdisplay_name[i], line_name[i],  transport_mode[i], operator_name[i],
+            timespans[i], servicejourney_name[i], servicejourneys[i]
+        ))
+    end
     println()
-    transport_mode
+    sort!(vsat; by = sat-> sat.timespan[1])
+    vsat
 end

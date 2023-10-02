@@ -6,6 +6,7 @@ using Dates: Date, ISODateFormat, format, dayname, Time
 using IniFile
 import Geodesy
 using Geodesy: LLA, UTMfromLLA
+import Base: show
 
 
 export StopsAndTime, DEFAULT_SELECTORS, journeys
@@ -40,6 +41,11 @@ include("stops.jl")
 include("journeypattern_and_destinationdisplay.jl")
 include("geodesy.jl")
 include("exported.jl")
+include("io.jl")
 
 end
+# TODO: Add a mandatory county prefix (MOR).
+#       Define stops search sequence, one for each county, in init file.
+#       Revisit stops logic, add comments. 
+# TODO ERROR: MethodError: no method matching stop_Places(; fna::String)
 # TODO: <ForAlighting>false</ForAlighting> ForBoarding
