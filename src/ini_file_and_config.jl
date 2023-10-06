@@ -23,7 +23,7 @@ function _prepare_init_file_configuration(io)
     # To file..
     println(io, conta)
     msg = """
-        # The default stops file resides in memory while detailing a request.
+        # The first `stops` file is kept in memory while detailing a request.
         # The other xml files are checked in sequence,
         # so place the counties most likely to be visisted by routes you 
         # are interested in on second, third, etc.
@@ -126,3 +126,39 @@ function _get_ini_fnam()
     fna
 end
 _get_fnam_but_dont_create_file() =  joinpath(homedir(), "StopsAndTimetables.ini")
+
+#################################
+# Configuration of file constants
+#################################
+"""
+    configure_primary_stopplace_file()
+
+For setting the path with filename, because storing this in a constant is faster.
+"""
+function configure_primary_stopplace_file()
+    # The last part of file name is the file date, so we try to be more general
+    first_part_of_file = get_config_value("Filenames", "Default stops file")
+    @assert isdir(STOPPLACE_FILES_DIR) STOPPLACE_FILES_DIR
+    candidates = readdir(STOPPLACE_FILES_DIR)
+    file = first(filter(fi -> startswith(fi, first_part_of_file), candidates))
+    path_with_filename = joinpath(STOPPLACE_FILES_DIR, file)
+    @assert isfile(path_with_filename) path_with_filename
+    path_with_filename
+end
+
+
+"""
+    configure_primary_stopplace_file()
+
+For setting the path with filename, because storing this in a constant is faster.
+"""
+function configure_ordered_stopplace_files()
+    first_part_of_files = get_config_value("Filenames", "Other stops files by pri", Vector{String})
+    candidates = readdir(STOPPLACE_FILES_DIR)
+    files = map(first_part_of_files) do fir
+        match = filter(ca -> startswith(ca, fir), candidates)
+        @assert length(match) == 1
+        first(match)
+    end
+    joinpath.(STOPPLACE_FILES_DIR, files)
+end

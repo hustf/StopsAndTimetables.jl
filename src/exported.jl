@@ -32,12 +32,16 @@ SelectorType = @NamedTuple begin
     inc_destinationdisplayname_func::Function
     inc_servicejourneyname_needle::String
     inc_transportmode_needle::String
+    inc_stopname_needle::String
+    exc_stopname_needle::String
+    inc_stoppos_match::Union{Tuple{Int64, Int64}, Nothing}
+    exc_stoppos_match::Union{Tuple{Int64, Int64}, Nothing}
 end
 
 """
 # Naming convention for selectors:
 
-1)  `inc_` or `exc_` : Include or exclude.
+1)  `inc_` or `exc_` : Include (excluding all else) or exclude.
 
 2)  `_file_`, `_date_` etc: what the parameter works on
 
@@ -66,7 +70,16 @@ DEFAULT_SELECTORS = SelectorType((
     #
     inc_servicejourneyname_needle = "",   # E.g.  "E39 "
     #
-    inc_transportmode_needle = ""         # E.g. "bus", "water", ""
+    inc_transportmode_needle = "",        # E.g. "bus", "water", ""
+
+    inc_stopname_needle = "",             # E.g. "Moa"
+
+    exc_stopname_needle = "",             # E.g. "Moa"
+
+    inc_stoppos_match  = nothing,          # E.g. (67209, 6904657), an easting, northing position
+
+    exc_stoppos_match  = nothing          # E.g. (67209, 6904657), an easting, northing position
+
 ))
 
 
@@ -162,7 +175,7 @@ function journeys(kw::SelectorType)
     # TODO: filtering, exc and inc.
     # Note: We use a string type for time here, because we want to have 'empty time', which would be "".
     # TODO: Reconsider, is that logical? It would be an empty vector.
-    time_str, stop_name, position = journey_time_name_position(servicejourneys)
+    time_str, stop_name, position = journey_time_name_position(servicejourneys; filter_kw(kw, "_stop")...)
     filter_all_based_on_first_vector!(time_str, stop_name, position, destinationdisplay_name, line_name,  transport_mode, operator_name,
         timespans, servicejourney_name, servicejourneys) do t
             ! isempty(t)

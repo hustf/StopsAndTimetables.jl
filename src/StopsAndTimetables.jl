@@ -11,14 +11,13 @@ import Base: show
 
 export StopsAndTime, DEFAULT_SELECTORS, journeys
 
-include("ini_file.jl")
+include("ini_file_and_config.jl")
 
 
-const STOPS_TABLE_DIR = get_config_value("Directories", "Stopstables")
+const STOPPLACE_FILES_DIR = get_config_value("Directories", "Stopstables")
 const TIME_TABLE_DIR = get_config_value("Directories", "Timetables")
-const DEFAULT_STOPS_FILE = get_config_value("Filenames", "Default stops file")
-const OTHER_STOPS_FILE_BY_PRI = get_config_value("Filenames", "Other stops files by pri", Vector{String})
-
+const PRIMARY_STOPS_FILE = configure_primary_stopplace_file()
+const ORDERED_STOPPLACE_FILES = configure_ordered_stopplace_files()
 """
 An in-memory lookup dictionary for speed. We store the name and location once parsed from xml.
 """

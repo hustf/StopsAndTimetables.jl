@@ -30,50 +30,104 @@ julia> hcat(t, n, p)
  "21:35:00"  "Molde trafikkterminal"         (100121, 6980683)
 ```
 """
-function journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places()) # TODO  early exit on keywords
+function journey_time_name_position(journey_node::EzXML.Node; 
+        stopplaces::EzXML.Node = stop_Places(), 
+        inc_stopname_needle = "", 
+        exc_stopname_needle = "",
+        inc_stoppos_match = nothing,
+        exc_stoppos_match = nothing)
+    #
+    nomatch_returnval = Vector{String}(), Vector{String}(), Vector{Tuple{Int64, Int64}}()
     # This may be fast, while stopplaces may be slow. CONSIDER moving out of here.
     timetabledpassingtime = TimetabledPassingTime(journey_node)
-    # 0.000417 seconds (278 allocations: 11.875 KiB)
     time_str = nodecontent.(DepartureTime_or_ArrivalTime.(timetabledpassingtime))
-    #   222.168 ms (413 allocations: 34.68 KiB)
+    # Because reading from xml may be slow, we use the reference string
+    # for the stop place as a key to dictionary STOPDICT. If retrieved once,
+    # we can get the stopplace much faster from the dictionary if the 
+    # stop place is needed again.
     scheduledstoppointref_str = nodecontent.(ScheduledStopPointRef_ref.(timetabledpassingtime))
-    ntuples = map(scheduledstoppointref_str) do ref
-        get(STOPDICT, ref, (name = "", x = 0, y = 0))
+    ntuples = Vector{NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}}}()
+    for ref in scheduledstoppointref_str
+        # Look for this ref in the dictionary.
+        ntup = get(STOPDICT, ref, (name = "", x = 0, y = 0))
+        if ! iszero(ntup.x)
+            # We have parsed this stop from xml before.
+            # Exit gracefully if ref is to an excluding criterion.
+            if is_stopname_excluded(exc_stopname_needle, ntup.name)
+                @info "Search aborted because of exc_stopname_needle"
+                return nomatch_returnval
+            end
+            if is_stoppos_excluded(exc_stoppos_match, (ntup.x, ntup.y) )
+                @info "Search aborted because of exc_stoppos_match"
+                return nomatch_returnval
+            end
+        end
+        push!(ntuples, ntup)
     end
-    new_ref = String[]
+
+    # We put the still-missing data references in still_not_found_ref.
+    still_not_found_ref = String[]
     for (ref, ntup) in zip(scheduledstoppointref_str, ntuples)
-        if ntup.name == ""
-            push!(new_ref, ref)
+        @assert ntup isa NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}} """Bad data type: STOPDICT["$ref"] = $(ntup)"""
+        if ntup.x == 0
+            push!(still_not_found_ref, ref)
         end
     end
-    found_stop_name, found_position = name_and_location_of_stop(new_ref; stopplaces)
-    for (ref, nam, pos) in zip(new_ref, found_stop_name, found_position)
-        push!(STOPDICT, ref => (name = nam, x = pos[1], y = pos[2]))
-    end
-    if length(new_ref) > 0
-        # Some feedback. This is what we just spent time on (and will not repeat):
-        printstyled("\n$(length(new_ref)) new stop points\n", color = :yellow)
-        newtuples = map(new_ref) do ref
-            get(STOPDICT, ref, (name = "--", x = 0, y = 0))
+    # Is there actually anything we couldn't find in STOPDICT? If so:
+    if length(still_not_found_ref) > 0
+        # Continue to read new stop places from xml into STOPDICT.
+        # If we encounter an excluding stopname or position, returns fast with empty results.
+        # Hence, empty results is an exit criterion here too.
+        found = name_and_position_of_stop(still_not_found_ref; stopplaces, exc_stopname_needle, exc_stoppos_match)
+        if first(found).x == 0
+            @info "Search aborted because of excluded stop"
+            return nomatch_returnval
         end
-        for nt in newtuples
-            printstyled("\n\t\t$(nt.name)", color = :blue)
+        @assert found isa Vector{NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}}}
+        # We found all the data we need. Store any new data in STOPDICT for later.
+        for (ref, ntup) in zip(still_not_found_ref, found)
+            pair = ref => ntup
+            @assert pair[2] isa NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}} "Bad data type: $(pair)"
+            push!(STOPDICT, pair)
+        end
+        # Some preliminary feedback. This is what we just spent time on (and will not need to repeat):
+        println()
+        printstyled(rpad("$(length(found)) new stop points parsed from xml:", 28), "    Easting    Northing\n", color = :yellow)
+        for nt in found
+            printstyled("    ", rpad(nt.name, 40), color = :blue)
+            printstyled("    ", rpad(nt.x, 12), rpad(nt.y, 12), "\n", color = :blue)
         end
         println()
-        # Every stop is now in the dict. Since this is reasonably fast, we can just as easily take everything 
-        # from the dict. We could speed this up further by using e.g. Dictionaries.jl
-        ntuples = map(scheduledstoppointref_str) do ref
-            get(STOPDICT, ref, (name = "", x = 0, y = 0))
-        end
+    end
+    # Every stop is now in the dict. Since this is reasonably fast, we can just as easily take everything 
+    # from the dict. We could perhaps speed this up further by using e.g. Dictionaries.jl
+    ntuples = map(scheduledstoppointref_str) do ref
+        STOPDICT[ref]
     end
     stop_name = [tup.name for tup in ntuples]
     position = [(tup.x, tup.y) for tup in ntuples]
+    # Exit gracefully if the 'inc_' arguments did not hit.
+    if ! isempty(inc_stopname_needle)
+        if ! any(semantic_contains.(stop_name, inc_stopname_needle))
+            @info "None of the stop names contained inc_stopname_needle = $inc_stopname_needle"
+            return nomatch_returnval
+        end
+    end
+    if ! isnothing(inc_stoppos_match)
+        if ! any(map(p -> p == inc_stoppos_match, position))
+            @info "None of the stop positions matched inc_stoppos_match = $inc_stoppos_match"
+            return nomatch_returnval
+        end
+    end
+    # Criteria met, return every stop
     time_str, stop_name, position
 end
-function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; stopplaces::EzXML.Node = stop_Places())
+function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; kw...)
+    # top node in primary stops file, keep parsed in memory throughout.
+    stopplaces = stop_Places()
     # A vector of tuples
      tsp = map(journey_nodes) do n
-        journey_time_name_position(n; stopplaces)
+        journey_time_name_position(n; stopplaces, kw...)
      end
      # Three nested vectors
      time_str = [tup[1] for tup in tsp]
@@ -136,7 +190,7 @@ function ServiceJourney(daytype_strings::Vector{String}; kw...)
     v
 end
 function ServiceJourney(daytype_string; kw...)
-    rs = roots(kw...)
+    rs = roots(;kw...)
     xp = """//x:ServiceJourney/x:dayTypes/x:DayTypeRef[@ref = \"$daytype_string\"]/../.."""
     v = Vector{EzXML.Node}()
     for r in rs
