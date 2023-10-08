@@ -41,6 +41,8 @@ end
     roots(inc_file_needle; pth = TIME_TABLE_DIR)
     ---> Vector{EzXML.Node}
 
+Side effect: Adds "filename_tmp" attribute to the in-memory xml root.
+
 # Example
 ```
 julia> rs = roots("31")
@@ -65,9 +67,29 @@ julia> map(r-> nodecontent(findfirst("x:Description", r, NS)), rs)
 
 """
 function roots(; pth = TIME_TABLE_DIR, kw...)
-    fnas = filenames_xml(;pth, kw...)
-    xdocs = readxml.(fnas)
-    EzXML.root.(xdocs)
+    filenames_with_path = filenames_xml(;pth, kw...)
+    root_of_file.(filenames_with_path)
+end
+
+
+"""
+    root_of_file(filename_with_path::String)
+    ---> EzXML.Node
+
+Side effect: Adds "filename_tmp" attribute to the in-memory xml root.
+"""
+function root_of_file(filename_with_path::String)
+    xdoc = readxml(filename_with_path)
+    r = EzXML.root(xdoc)
+    # The filename is not stored by EzXML, so we
+    # add it as an attribute. Filename selectors are
+    # the most time-efficient method, so giving 
+    # that feedback during parsing is effective.
+    # We do not save the modifed xml.
+    filename_without_path = splitpath(filename_with_path)[end]
+    a = AttributeNode("filename_tmp", filename_without_path)
+    link!(r, a)
+    r
 end
 
 """
@@ -172,6 +194,18 @@ function filter_all_based_on_first_vector!(f::Function, vectors...)
     vectors
 end
 
+"""
+    filter_kw(kw::NamedTuple, inc_symbol_needle)
+    ---> NamedTuple
+
+# Example
+```
+julia> using StopsAndTimetables: filter_kw
+
+julia> filter_kw((prefix_KEY_suffix = 2, otherkwd = "irrelevant"), "KEY")
+(prefix_KEY_suffix = 2,)
+```
+"""
 function filter_kw(kw::NamedTuple, inc_symbol_needle)
     ps = pairs(kw)
     fps = filter(ps) do p
@@ -179,12 +213,13 @@ function filter_kw(kw::NamedTuple, inc_symbol_needle)
     end
     NamedTuple(fps)
 end
-function report_length(vnam, vval; prefix = " ✂ ")
-    printstyled(prefix)
-    printstyled(length(vval), color = :yellow)
-    printstyled(" $vnam", color = :green)
-end
 
+"""report_length(collection_name, collection; prefix = " ✂ ")"""
+function report_length(collection_name, collection; prefix = " ✂ ")
+    printstyled(prefix)
+    printstyled(length(collection), color = :yellow)
+    printstyled(" $collection_name", color = :green)
+end
 
 """
     descendent_Name(node::EzXML.Node)
@@ -203,6 +238,8 @@ end
 
 # Example
 ```
+julia> using StopsAndTimetables: descendent_name, ServiceJourney
+
 julia> s = first(ServiceJourney("MOR:DayType:NB249_Mo_8"))
 EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d597fd90e0>)
 
@@ -228,9 +265,90 @@ function descendent_Name(node::EzXML.Node)
     findfirst(xp, node, NS)
 end
 
+"""
+    filename_from_root_attribute(node::EzXML.Node)
+    ---> String
+
+EzXML does not store the file name, hence we created a root attribute with filename when 
+parsing the document.
+
+# Example
+```
+julia> using StopsAndTimetables: filename_from_root_attribute, ServiceJourney
+
+julia> s = first(ServiceJourney("MOR:DayType:NB249_Mo_8"))
+EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001f18e95f9e0>)
+
+julia> filename_from_root_attribute(s)
+"MOR_MOR-Line-100_100_Ekspressen.xml"
+```
+"""
+function filename_from_root_attribute(node::EzXML.Node)
+    xp = "/*/@filename_tmp"
+    nodecontent(findfirst(xp, node, NS))
+end
 
 
+"""
+    shift_to_front!(vec::Vector, i::Int)
+    ---> Vector
 
+# Example
+```
+julia> using StopsAndTimetables: shift_to_front!
+
+shift_to_front!([1, 2, 3, 4, 5], 3)
+```
+"""
+function shift_to_front!(vec::Vector, i::Int)
+    @assert 1 ≤ i ≤ length(vec) "Index out of bounds"
+    val = vec[i]
+    for j = i:-1:2
+        vec[j] = vec[j-1]
+    end
+    vec[1] = val
+    vec
+end
+
+"""
+    report_selectors(kw::SelectorType)
+    ---> Nothing
+
+# Example
+```
+julia> using StopsAndTimetables: DEFAULT_SELECTORS, report_selectors
+
+julia> report_selectors(DEFAULT_SELECTORS)
+```
+"""
+function report_selectors(kw::SelectorType)
+    println("Current journey selector keywords:")
+    for fi in fieldnames(SelectorType)
+        val = kw[fi]
+        color = :normal
+        if val isa String
+            if val == ""
+                color = :light_black
+            end
+            val = "\"" * val * "\""
+        elseif val isa Union{Tuple{Int64, Int64}, Nothing}
+            if isnothing(val)
+                color = :light_black
+            end
+        elseif val isa Function
+            color = :blue
+        elseif val isa Union{Time, Nothing}
+            if isnothing(val)
+                color = :light_black
+            end
+        else
+            if isempty(val)
+                color = :light_black
+            end
+        end 
+        printstyled("    ", rpad(fi, 40), val, "\n"; color)
+    end
+end
 
 
 nothing

@@ -1,7 +1,3 @@
-
-
-
-
 """
     name_and_position_of_stop(scheduledstoppointref_str::Vector{String}; 
         stopplaces::EzXML.Node = stop_Places(),
@@ -25,7 +21,7 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
     ref_strs = stopplaceref_from_scheduledstoppointref.(scheduledstoppointref_str)
     for ref_str in ref_strs
         # Find this in NSR
-        spoq = StopPlace_or_Quay(ref_str, stopplaces)
+        spoq = StopPlace_or_quay_successive_search(ref_str, stopplaces)
         stop_name = nodecontent(descendent_Name(spoq))
         # If journeys with this stop is excluded, return
         # before looking for more useless stops.
@@ -39,6 +35,33 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
         push!(happy_return, (name = stop_name, x = x, y = y))
     end
     happy_return
+end
+
+"""
+    StopPlace_or_quay_successive_search(ref_str, stopplaces)
+    ---> EzXML.Node
+
+Call `StopPlace_or_quay` with sources in decreasing order of likelihood.
+We only store the most likely source parsed in memory.
+"""
+function StopPlace_or_quay_successive_search(ref_str, stopplaces)
+    spoq = StopPlace_or_Quay(ref_str, stopplaces)
+    if isnothing(spoq)
+        for i in eachindex(ORDERED_STOPPLACE_FILES)
+            file_with_path = ORDERED_STOPPLACE_FILES[i]
+            alt_stopplaces = stop_Places(;file_with_path)
+            spoq = StopPlace_or_Quay(ref_str, alt_stopplaces)
+            if ! isnothing(spoq)
+                @info "Found stopplace in alternative source $i, \n\t\t$(filename_from_root_attribute(alt_stopplaces))"
+                if i > 1
+                    shift_to_front!(ORDERED_STOPPLACE_FILES, i)
+                end
+                return spoq
+            end
+        end
+        throw("Could not find stop or quay from $ref_str")
+    end
+    spoq
 end
 function is_stopname_excluded(exc_stopname_needle, stop_name)
     if ! isempty(exc_stopname_needle)
@@ -101,17 +124,12 @@ function StopPlace_or_Quay(stopplaceref::String, stopPlaces)
 end
 
 
-
-
-
-
-
 """
     stop_Places(;file_with_path = PRIMARY_STOPS_FILE)
     ---> EzXML.Node
 """
 function stop_Places(;file_with_path = PRIMARY_STOPS_FILE)
-    r = EzXML.root(readxml(file_with_path))
+    r = root_of_file(file_with_path)
     xp = "/x:PublicationDelivery/x:dataObjects/x:SiteFrame/x:stopPlaces"
     findfirst(xp, r, NS)
 end

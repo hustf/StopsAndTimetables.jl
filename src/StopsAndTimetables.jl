@@ -1,6 +1,6 @@
 module StopsAndTimetables
 import EzXML
-using EzXML: findfirst, nodecontent, readxml, isattribute
+using EzXML: findfirst, nodecontent, readxml, isattribute, link!, AttributeNode
 import Dates, Logging
 using Dates: Date, ISODateFormat, format, dayname, Time
 using IniFile
@@ -31,6 +31,8 @@ unspecified namespace elements with 'x':"
 const NS = ["x" => "http://www.netex.org.uk/netex"]
 
 
+
+include("exported.jl")
 include("utilties.jl")
 include("timetables.jl")
 include("date_and_daytypes.jl")
@@ -39,12 +41,8 @@ include("lines.jl")
 include("stops.jl")
 include("journeypattern_and_destinationdisplay.jl")
 include("geodesy.jl")
-include("exported.jl")
 include("io.jl")
 
+# TODO: For the puclic interface, use dates and time types consistently.
+#       For the internal interface, we could use NamedTuple more.
 end
-# TODO: Add a mandatory county prefix (MOR).
-#       Define stops search sequence, one for each county, in init file.
-#       Revisit stops logic, add comments. 
-# TODO ERROR: MethodError: no method matching stop_Places(; fna::String)
-# TODO: <ForAlighting>false</ForAlighting> ForBoarding

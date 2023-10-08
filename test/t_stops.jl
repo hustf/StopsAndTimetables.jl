@@ -2,7 +2,8 @@ using Test
 using StopsAndTimetables
 using StopsAndTimetables: PRIMARY_STOPS_FILE
 using StopsAndTimetables: ORDERED_STOPPLACE_FILES, name_and_position_of_stop
-using StopsAndTimetables: ServiceJourney, journey_time_name_position
+using StopsAndTimetables: ServiceJourney, journey_time_name_position, TimetabledPassingTime
+using StopsAndTimetables: name_and_position_of_stop, stop_Places, filename_from_root_attribute
 
 @test contains(PRIMARY_STOPS_FILE, "More og Romsdal")
 @test length(ORDERED_STOPPLACE_FILES) == 10
@@ -37,3 +38,13 @@ jtnp = journey_time_name_position(node; inc_stoppos_match)
 @test length(jtnp[1]) == 97
 inc_stoppos_match = (53608, 6956117)  # This is close, but not one of the stops
 jtnp = journey_time_name_position(node; inc_stoppos_match)
+# Now a problematic one. Both stopplaces are within the same county now,
+# but perhaps for historical reasons, one stop is in another county file
+scheduledstoppointref_str = ["MOR:ScheduledStopPoint:15768661", "MOR:ScheduledStopPoint:15718630"]
+stopplaces = stop_Places()
+@test filename_from_root_attribute(stopplaces ) == "tiamat-export-15_More og Romsdal-202309231207494696.xml"
+found = name_and_position_of_stop(scheduledstoppointref_str; stopplaces)
+@test found[2].name == "Hennset ferjekai"
+
+node = ServiceJourney("MOR:DayType:F1_Mo_1"; inc_file_needle ="Line-1062")[1]
+jtnp = journey_time_name_position(node);

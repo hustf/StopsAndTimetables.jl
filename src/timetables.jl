@@ -1,13 +1,15 @@
 """
     journey_time_name_position(journey_node::EzXML.Node; stopplaces::EzXML.Node = stop_Places())
-    ---> Tuple{Vector{String}, Vector{Int64}, Vector{Int64}}}
+    ---> Vector{Tuple{Vector{String}, Vector{String}, Vector{{Tuple{Int64, Int64}}}}}
     journey_time_name_position(journey_node::Vector{EzXML.Node}; stopplaces::EzXML.Node = stop_Places())
-    ---> Tuple{Vector{Vector{String}}, Vector{Vector{Int64}}, Vector{Vector{Int64}}}}
+    ---> Nested vectors: time_str, stop_name, position
 
 journey_node is a ServiceJourney, but this could be extended to cover other journey types.
 
 # Example
 ```
+julia> using StopsAndTimetables: DayType_id
+
 julia> daytype_strings = nodecontent.(DayType_id("2023-09-18"))
 69-element Vector{String}:
  "MOR:DayType:NB248_Mo_13"
@@ -36,11 +38,16 @@ function journey_time_name_position(journey_node::EzXML.Node;
         exc_stopname_needle = "",
         inc_stoppos_match = nothing,
         exc_stoppos_match = nothing)
-    #
     nomatch_returnval = Vector{String}(), Vector{String}(), Vector{Tuple{Int64, Int64}}()
-    # This may be fast, while stopplaces may be slow. CONSIDER moving out of here.
+    #
+    # Reading time from within the journey's document. Likely a fast operation.
+    #
     timetabledpassingtime = TimetabledPassingTime(journey_node)
     time_str = nodecontent.(DepartureTime_or_ArrivalTime.(timetabledpassingtime))
+    #
+    # Reading stop name and position. Potentially slow because we don't know which file
+    # the stop is defined in. 
+    #
     # Because reading from xml may be slow, we use the reference string
     # for the stop place as a key to dictionary STOPDICT. If retrieved once,
     # we can get the stopplace much faster from the dictionary if the 
@@ -54,11 +61,11 @@ function journey_time_name_position(journey_node::EzXML.Node;
             # We have parsed this stop from xml before.
             # Exit gracefully if ref is to an excluding criterion.
             if is_stopname_excluded(exc_stopname_needle, ntup.name)
-                @info "Search aborted because of exc_stopname_needle"
+                @info "Journey stops search aborted because of exc_stopname_needle"
                 return nomatch_returnval
             end
             if is_stoppos_excluded(exc_stoppos_match, (ntup.x, ntup.y) )
-                @info "Search aborted because of exc_stoppos_match"
+                @info "Journey stops search aborted because of exc_stoppos_match"
                 return nomatch_returnval
             end
         end
@@ -92,7 +99,7 @@ function journey_time_name_position(journey_node::EzXML.Node;
         end
         # Some preliminary feedback. This is what we just spent time on (and will not need to repeat):
         println()
-        printstyled(rpad("$(length(found)) new stop points parsed from xml:", 28), "    Easting    Northing\n", color = :yellow)
+        println(rpad("    $(length(found)) new stop points parsed from xml:", 44), "    Easting     Northing")
         for nt in found
             printstyled("    ", rpad(nt.name, 40), color = :blue)
             printstyled("    ", rpad(nt.x, 12), rpad(nt.y, 12), "\n", color = :blue)
@@ -109,13 +116,13 @@ function journey_time_name_position(journey_node::EzXML.Node;
     # Exit gracefully if the 'inc_' arguments did not hit.
     if ! isempty(inc_stopname_needle)
         if ! any(semantic_contains.(stop_name, inc_stopname_needle))
-            @info "None of the stop names contained inc_stopname_needle = $inc_stopname_needle"
+            # @info "None of the stop names contained inc_stopname_needle = $inc_stopname_needle"
             return nomatch_returnval
         end
     end
     if ! isnothing(inc_stoppos_match)
         if ! any(map(p -> p == inc_stoppos_match, position))
-            @info "None of the stop positions matched inc_stoppos_match = $inc_stoppos_match"
+            # @info "None of the stop positions matched inc_stoppos_match = $inc_stoppos_match"
             return nomatch_returnval
         end
     end
@@ -123,16 +130,38 @@ function journey_time_name_position(journey_node::EzXML.Node;
     time_str, stop_name, position
 end
 function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; kw...)
-    # top node in primary stops file, keep parsed in memory throughout.
+    # Feedback on file source is important because it helps user to make effective selectors.
+    # Many nodes in sequence will stem from the same files.
+    # We will only print the file name when we work on a new file.
+    xml_sources = String[]
+    lastfile = ""
+    for n in journey_nodes
+        curfile = filename_from_root_attribute(n)
+        msg = curfile == lastfile ? "" : curfile
+        push!(xml_sources, msg)
+        lastfile = curfile
+    end
+    # Top node in primary stops file, keep parsed in memory throughout.
     stopplaces = stop_Places()
-    # A vector of tuples
-     tsp = map(journey_nodes) do n
-        journey_time_name_position(n; stopplaces, kw...)
-     end
-     # Three nested vectors
+    # Vector{Tuple{Vector{String}, Vector{String}, Vector{{Tuple{Int64, Int64}}}}}
+    tsp = Vector{Tuple}()
+    for (n, source) in zip(journey_nodes, xml_sources)
+        if source !== ""
+            printstyled("    finding stops referred from journey in:   ", color = :light_black)
+            printstyled(source,"\n", color = :light_black, bold = true)
+        end
+        t, na, p = journey_time_name_position(n; stopplaces, kw...)
+        push!(tsp, (t, na, p))
+    end
+    # A vector of tuples, Vector{Tuple{Vector{String}, Vector{Int64}, Vector{Int64}}}()
+#     tsp = map(journey_nodes) do n
+#        journey_time_name_position(n; stopplaces, kw...)
+#     end
+     # Reorganize to three nested vectors
      time_str = [tup[1] for tup in tsp]
      stop_name = [tup[2] for tup in tsp]
      position = [tup[3] for tup in tsp]
+     #
      time_str, stop_name, position
 end
 
