@@ -51,6 +51,7 @@ function OperatingPeriod_id(date::Date, r::EzXML.Node)
     findall(xp, r, NS)   
 end
 
+
 """
      DayTypeAssignment(date; inc_file_needle = "_shared_data")
      ---> Vector{EzXML.Node}
@@ -130,23 +131,47 @@ julia> DayType_id("2023-09-23")
 ```
 """
 function DayType_id(date; inc_file_needle = "_shared_data")
-    dt = tryparse(Date, date)
-    if isnothing(dt) || Dates.year(dt) < 2000
-        throw(ArgumentError("Date format not yyyy-mm-dd: $date"))
+    if ! isempty(date)
+        dt = tryparse(Date, date)
+        if isnothing(dt) || Dates.year(dt) < 2000
+            throw(ArgumentError("Date format not yyyy-mm-dd: $date"))
+        end
+        DayType_id(dt; inc_file_needle)
+    else
+        # All dates included.
+        DayType_id(; inc_file_needle)
     end
-    DayType_id(dt; inc_file_needle)
 end
 function DayType_id(date::Date; inc_file_needle = "_shared_data")
-    dtref = DayTypeRef_ref(date; inc_file_needle)
-    length(dtref) == 0 && return Vector{EzXML.Node}()
-    dty = findfirst("//x:dayTypes", first(dtref), NS)
-    node_or_nothing = map(dtref) do dtr
-        @assert isattribute(dtr)
-        xp = """x:DayType [@id = "$(nodecontent(dtr))"
+    # All the daytype references from dayTypeAssignments
+    # Hundreds of these, but some daytypes are not assigned,
+    # so we may save work here.
+    dtref_node = DayTypeRef_ref(date; inc_file_needle)
+    length(dtref_node) == 0 && return Vector{EzXML.Node}()
+    # Some of those references are identical.
+    dtref_str = unique(nodecontent.(dtref_node))
+    # Parent of daytypes for faster search.
+    dty = findfirst("//x:dayTypes", first(dtref_node), NS)
+    node_or_nothing = map(dtref_str) do dtr
+        # This is problematic. Some do not have daysofweek.
+        xp = """x:DayType [@id = "$dtr"
             and
             x:properties/x:PropertyOfDay/x:DaysOfWeek = "$(dayname(date))"]/@id"""
         findfirst(xp, dty, NS)
     end
     matches = filter(n -> !isnothing(n), node_or_nothing)
+
     Vector{EzXML.Node}(matches)
+end
+function DayType_id(; inc_file_needle = "_shared_data")
+    # No date provided; return all
+    rs = roots(; inc_file_needle)
+    @assert length(rs) == 1  """We could not identify the shared file to use. There are $(length(rs)):
+        \t$rs
+        \tinc_file_needle = "$inc_file_needle"
+        """
+    r = first(rs)
+    dayTypes = findfirst("//x:dayTypes", r, NS)
+    xp = "x:DayType /@id"
+    findall(xp, dayTypes, NS)   
 end
