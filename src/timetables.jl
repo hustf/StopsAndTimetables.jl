@@ -153,10 +153,6 @@ function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; kw...)
         t, na, p = journey_time_name_position(n; stopplaces, kw...)
         push!(tsp, (t, na, p))
     end
-    # A vector of tuples, Vector{Tuple{Vector{String}, Vector{Int64}, Vector{Int64}}}()
-#     tsp = map(journey_nodes) do n
-#        journey_time_name_position(n; stopplaces, kw...)
-#     end
      # Reorganize to three nested vectors
      time_str = [tup[1] for tup in tsp]
      stop_name = [tup[2] for tup in tsp]

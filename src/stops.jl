@@ -37,6 +37,9 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
     happy_return
 end
 
+
+
+
 """
     StopPlace_or_quay_successive_search(ref_str, stopplaces)
     ---> EzXML.Node

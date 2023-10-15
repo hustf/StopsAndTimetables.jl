@@ -8,16 +8,17 @@ StopsAndTime contains timetable and stops data for a single journey.
 A "query" returns a vector of StopsAndTime.
 """
 struct StopsAndTime
-    time_str
-    stop_name
-    position
-    destinationdisplay_name
-    line_name
-    transport_mode
-    operator_name
-    timespan
-    servicejourney_name
-    servicejourney
+    time_str::Vector{String}
+    stop_name::Vector{String}
+    position::Vector{Tuple{Int64, Int64}}
+    destinationdisplay_name::String
+    line_name::String
+    transport_mode::String
+    operator_name::String
+    timespan::Tuple{Time, Time}
+    servicejourney_name::String
+    servicejourney_id::String
+    source_filename::String
 end
 
 """
@@ -194,7 +195,7 @@ function journeys(kw::SelectorType)
     # of stops as soon as an exc_ criterion is met.
     #
     # Note: We use a string type for time here, because we want to have 'empty time', which would be "".
-    # TODO: Reconsider, is that logical? It would be an empty vector.
+    # TODO: Include stop details.....
     #
     time_str, stop_name, position = journey_time_name_position(servicejourneys; filter_kw(kw, "_stop")...)
     filter_all_based_on_first_vector!(time_str, stop_name, position, destinationdisplay_name, line_name,  transport_mode, operator_name,
@@ -205,7 +206,7 @@ function journeys(kw::SelectorType)
     for i in eachindex(servicejourneys)
         push!(vsat, StopsAndTime(
             time_str[i], stop_name[i], position[i], destinationdisplay_name[i], line_name[i],  transport_mode[i], operator_name[i],
-            timespans[i], servicejourney_name[i], servicejourneys[i]
+            timespans[i], servicejourney_name[i], servicejourneys[i]["id"], filename_from_root_attribute(servicejourneys[i])
         ))
     end
     println()

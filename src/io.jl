@@ -19,8 +19,11 @@ function Base.show(io::IO, ::MIME"text/plain", s::StopsAndTime)
     printstyled(io, rpad("    operator_name:", 29), color = :light_black)
     printstyled(io, rpad("$(s.operator_name)", 30), "\n", color = :bold)
 
-    printstyled(io, rpad("    servicejourney:", 29), color = :light_black)
-    printstyled(io, rpad(repr(s.servicejourney), 30), "\n", color = :bold)
+    printstyled(io, rpad("    servicejourney_id:", 29), color = :light_black)
+    printstyled(io, rpad(s.servicejourney_id, 30), "\n", color = :bold)
+
+    printstyled(io, rpad("    source_filename:", 29), color = :light_black)
+    printstyled(io, rpad(s.source_filename, 30), "\n", color = :bold)
 
     # header
     print(io, "    ", repeat('-', 81), "\n")

@@ -1,7 +1,7 @@
 name = "StopsAndTimetables"
 uuid = "b292befe-0c80-425c-929c-656b711f1b2a"
 authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
-version = "0.0.8"
+version = "0.1.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"

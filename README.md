@@ -1,13 +1,16 @@
 # StopsAndTimetables.jl
-Select and structure xml data downloaded from https://developer.entur.org/stops-and-timetable-data. 
+Download public transport data from https://developer.entur.org/stops-and-timetable-data. 
 
-# Usage
+Call `journey(keywords..)` to filter and structure to a `Vector{StopsAndTime}`.
+
+## Usage
 Download .xml files. 
 
-Install and call `journeys()` (#Example)[#Example]. An .ini file is generated when you first call `journeys()`, you can adapt to your location by editing. 
-Move the .xml files to the file locations (re)defined in the .ini file.
+Install and call `journeys()` (#Example)[#Example]. An .ini file is generated when you first call `journeys()`. You can adapt it to your location by editing. 
 
-Stopplace / destination lookups are potentially slow, especially for out-of-county journeys. After xml data is parsed once, they are quicker. Do take
+Move the downloaded .xml files to the file locations (re)defined in the .ini file.
+
+Stopplace / destination lookups are potentially slow, especially for out-of-county journeys. After xml data is parsed once in a session, they are quicker. Do take
 care to reduce the amount of data by filtering early in the pipeline! Feedback from the pipeline is printed to stdout. For searches in other counties,
 adapting the .ini file order definitions is advised but not necessary.
 
@@ -17,7 +20,7 @@ is a default date selection. Override it with `inc_date_match = ""` to get resul
 
 The return type is a vector of `StopsAndTime`. Geographical coordinates are given in UTM33 (easting, northing) coordinates, where one unit is very close to 1 meter.
 
-# Example
+## Example
 
 ```
 (@v1.9) pkg> registry add https://github.com/hustf/M8
@@ -40,3 +43,8 @@ julia> display.(journeys(;inc_date_match, inc_file_needle, inc_time_match, inc_t
 ```
 <img src="resources/example.png" alt = "repl" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
+## Before you go...
+
+We have implemented a way of going from a date to a StopsAndTime, but not the other way around.
+
+Manually inspecting xml files is easy on a case by case basis, though. Generally followed rules are harder to find. Lacking .xsd-files, we made this little tool for inspecting the structure of .xml docs: [resources/explore_timetable.jl](resources/explore_xml.jl).

@@ -238,7 +238,7 @@ end
 
 # Example
 ```
-julia> using StopsAndTimetables: descendent_name, ServiceJourney
+julia> using StopsAndTimetables: descendent_Name, ServiceJourney
 
 julia> s = first(ServiceJourney("MOR:DayType:NB249_Mo_8"))
 EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d597fd90e0>)
