@@ -59,7 +59,7 @@ const DEFAULT_SELECTORS = SelectorType((
     exc_file_needle = "tmp",              # Exclude timetable files containing "tmp". Note: 7-bit ASCII for some reason (no æøå)
     exc_file_func = (n) -> false,         # This default function excludes no filenames.
     #
-    inc_date_match = "2023-09-28",        # Date to include. Returned result generally include other dates, too.
+    inc_date_match = "2023-10-26",        # Date to include. Returned result generally include other dates, too.
     #
     inc_time_match = nothing,             # Specific time to include, i.e. must be in the open interval start time to end time
     #
