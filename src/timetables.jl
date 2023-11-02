@@ -85,6 +85,7 @@ function journey_time_name_position(journey_node::EzXML.Node;
         # Continue to read new stop places from xml into STOPDICT.
         # If we encounter an excluding stopname or position, returns fast with empty results.
         # Hence, empty results is an exit criterion here too.
+        @debug journey_node["id"]  still_not_found_ref time_str
         found = name_and_position_of_stop(still_not_found_ref; stopplaces, exc_stopname_needle, exc_stoppos_match)
         if first(found).x == 0
             @info "Search aborted because of excluded stop"

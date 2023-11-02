@@ -19,10 +19,25 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
     # Change the reference format from the one found in timetables
     # to the one used in the National Stopplace Register
     ref_strs = stopplaceref_from_scheduledstoppointref.(scheduledstoppointref_str)
-    for ref_str in ref_strs
+    for (i, ref_str) in enumerate(ref_strs)
         # Find this in NSR
         spoq = StopPlace_or_quay_successive_search(ref_str, stopplaces)
-        stop_name = nodecontent(descendent_Name(spoq))
+        if ! isnothing(spoq)
+            stop_name = nodecontent(descendent_Name(spoq))
+        else
+            # We had to give up finding the stop place node, and do not have any
+            # info at all. Still, it may be desireable to continue anyway. If 
+            # not for anything else, for debugging or error correction.
+            # In a very small-scale map, such errors are to be expected.
+            # Instead, we issued a warning on a lower level, and repeat the previous stop.
+            # This goes against the fail-early principle...
+            if i > 1
+                spoq = StopPlace_or_quay_successive_search(ref_strs[i - 1], stopplaces)
+            else
+                spoq = StopPlace_or_quay_successive_search(ref_strs[i + 1], stopplaces)
+            end
+            stop_name = nodecontent(descendent_Name(spoq)) * " NA: " * ref_str
+        end
         # If journeys with this stop is excluded, return
         # before looking for more useless stops.
         if is_stopname_excluded(exc_stopname_needle, stop_name)
@@ -62,7 +77,10 @@ function StopPlace_or_quay_successive_search(ref_str, stopplaces)
                 return spoq
             end
         end
-        throw("Could not find stop or quay from $ref_str")
+        @warn "Could not find stop or quay from $ref_str"
+        # This can be a result from errors in the xml data, inconsistent revisions,
+        # or a stop place that is used during some seasons only.
+        return nothing # TEMP experiment.
     end
     spoq
 end

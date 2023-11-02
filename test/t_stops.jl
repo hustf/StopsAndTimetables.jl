@@ -48,3 +48,9 @@ found = name_and_position_of_stop(scheduledstoppointref_str; stopplaces)
 
 node = ServiceJourney("MOR:DayType:F1_Mo_1"; inc_file_needle ="Line-1062")[1]
 jtnp = journey_time_name_position(node);
+
+
+# Debug mystery. This seems to be an inconsistency between versions of the xml.
+using Dates
+@test journeys(inc_file_needle = "line-331", inc_time_match = Time("13:30"))[1].stop_name[end] == "Runde havn NA: MOR:StopPlace:15151511"
+# Servicejourney id is 331_111_9150000013217280 in MOR_MOR-Line-331_331_Fosnavag-Rermoy-Runde.xml

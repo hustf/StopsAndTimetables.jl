@@ -48,3 +48,22 @@ julia> display.(journeys(;inc_date_match, inc_file_needle, inc_time_match, inc_t
 We have implemented a way of going from a date to a StopsAndTime, but not the other way around.
 
 Manually inspecting xml files is easy on a case by case basis, though. Generally followed rules are harder to find. Lacking .xsd-files, we made this little tool for inspecting the structure of .xml docs: [resources/explore_timetable.jl](resources/explore_xml.jl).
+
+For inspection, we suggest using the xpath syntax. A starting point from /src:
+
+```
+function ServiceJourney(daytype_string; kw...)
+    rs = roots(;kw...)
+    xp = """//x:ServiceJourney/x:dayTypes/x:DayTypeRef[@ref = \"$daytype_string\"]/../.."""
+    v = Vector{EzXML.Node}()
+    for r in rs
+        v_a = findall(xp, r, NS)
+        if ! isempty(v_a)
+            append!(v, v_a)
+        end
+    end
+    v
+end
+```
+
+Examples of traversing trees can be found in [EzXML.jl](https://github.com/JuliaIO/EzXML.jl).
