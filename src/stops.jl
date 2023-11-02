@@ -31,10 +31,12 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
             # In a very small-scale map, such errors are to be expected.
             # Instead, we issued a warning on a lower level, and repeat the previous stop.
             # This goes against the fail-early principle...
-            if i > 1
+            if i > 1 && length(ref_strs) > 1
                 spoq = StopPlace_or_quay_successive_search(ref_strs[i - 1], stopplaces)
-            else
+            elseif length(ref_strs) > 1
                 spoq = StopPlace_or_quay_successive_search(ref_strs[i + 1], stopplaces)
+            else
+                throw("Could not find $ref_str, and this function has no info on neighbouring stops.")
             end
             stop_name = nodecontent(descendent_Name(spoq)) * " NA: " * ref_str
         end
@@ -44,6 +46,8 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
             return empty_return
         end
         x, y = easting_northing(spoq)
+@show x, y
+
         if is_stoppos_excluded(exc_stoppos_match, (x, y))
             return empty_return
         end

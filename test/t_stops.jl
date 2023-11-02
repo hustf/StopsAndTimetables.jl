@@ -50,7 +50,13 @@ node = ServiceJourney("MOR:DayType:F1_Mo_1"; inc_file_needle ="Line-1062")[1]
 jtnp = journey_time_name_position(node);
 
 
-# Debug mystery. This seems to be an inconsistency between versions of the xml.
+# Debug mystery. From Servicejourney id 331_111_9150000013217280 in MOR_MOR-Line-331_331_Fosnavag-Rermoy-Runde.xml
+# The next to last stop
+@test name_and_position_of_stop(["MOR:ScheduledStopPoint:15151484"]) == [(name = "Runde havn", x = 18389, y = 6953409)]
+# The last stop. This seems to be an inconsistency between versions of the xml. We added file 'user_corrections.xml'
+# and copied in an empty xml skeleton made with '/resources/explore_xml.jl'
+# The position and name data is taken from measuring on a map. 
+@test name_and_position_of_stop(["MOR:ScheduledStopPoint:15151511"]) == [(name = "Runde Miljøsenter", x = 18444, y = 6953562)]
+
 using Dates
-@test journeys(inc_file_needle = "line-331", inc_time_match = Time("13:30"))[1].stop_name[end] == "Runde havn NA: MOR:StopPlace:15151511"
-# Servicejourney id is 331_111_9150000013217280 in MOR_MOR-Line-331_331_Fosnavag-Rermoy-Runde.xml
+@test journeys(inc_file_needle = "line-331", inc_time_match = Time("13:30"))[1].stop_name[end] == "Runde Miljøsenter"

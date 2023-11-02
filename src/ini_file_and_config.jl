@@ -34,6 +34,7 @@ function _prepare_init_file_configuration(io)
     println(io, msg)
     conta = Inifile() # This is a trick to be able to have comments in between sections.
     set(conta, "Filenames", "Other stops files by pri", repr([
+        "user_corrections"
         "tiamat-export-50_Trond"
         "tiamat-export-46_Vestl"
         "tiamat-export-34_Innla"
