@@ -46,8 +46,6 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
             return empty_return
         end
         x, y = easting_northing(spoq)
-@show x, y
-
         if is_stoppos_excluded(exc_stoppos_match, (x, y))
             return empty_return
         end

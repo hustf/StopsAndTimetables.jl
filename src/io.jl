@@ -42,3 +42,34 @@ function Base.show(io::IO, ::MIME"text/plain", s::StopsAndTime)
         printstyled(io, "    ", rpad(p[1], 12), rpad(p[2], 12), "\n", color = :bold)
     end
 end
+
+function Base.show(io::IO, ::MIME"text/plain", kw::SelectorType)
+    # The SelectorType is really a NamedTuple where fields correspond to the prescribed type.
+    # The default printing is hardly human readable, though.
+    println("SelectorType:")
+    for fi in fieldnames(SelectorType)
+        val = kw[fi]
+        color = :normal
+        if val isa String # TODO change all to regex? Print like r"ab"
+            if val == ""
+                color = :light_black
+            end
+            val = "\"" * val * "\""
+        elseif val isa Union{Tuple{Int64, Int64}, Nothing}
+            if isnothing(val)
+                color = :light_black
+            end
+        elseif val isa Function
+            color = :blue
+        elseif val isa Union{Time, Nothing}
+            if isnothing(val)
+                color = :light_black
+            end
+        else
+            if isempty(val)
+                color = :light_black
+            end
+        end 
+        printstyled(io, "    ", rpad(fi, 40), val, "\n"; color)
+    end
+end

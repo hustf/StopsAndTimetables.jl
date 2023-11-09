@@ -113,6 +113,8 @@ end
 Return true if haystack contains needle.
 Both arguments are stripped anything but letters and digits,
 and converted to lowercase.
+
+TODO: Replace with calling `occursin`. Accept regex or string as needle.
 """
 function semantic_contains(haystack::AbstractString, needle::AbstractString)
     contains(semantic_string(haystack), semantic_string(needle))
@@ -309,46 +311,5 @@ function shift_to_front!(vec::Vector, i::Int)
     vec[1] = val
     vec
 end
-
-"""
-    report_selectors(kw::SelectorType)
-    ---> Nothing
-
-# Example
-```
-julia> using StopsAndTimetables: DEFAULT_SELECTORS, report_selectors
-
-julia> report_selectors(DEFAULT_SELECTORS)
-```
-"""
-function report_selectors(kw::SelectorType)
-    println("Current journey selector keywords:")
-    for fi in fieldnames(SelectorType)
-        val = kw[fi]
-        color = :normal
-        if val isa String
-            if val == ""
-                color = :light_black
-            end
-            val = "\"" * val * "\""
-        elseif val isa Union{Tuple{Int64, Int64}, Nothing}
-            if isnothing(val)
-                color = :light_black
-            end
-        elseif val isa Function
-            color = :blue
-        elseif val isa Union{Time, Nothing}
-            if isnothing(val)
-                color = :light_black
-            end
-        else
-            if isempty(val)
-                color = :light_black
-            end
-        end 
-        printstyled("    ", rpad(fi, 40), val, "\n"; color)
-    end
-end
-
 
 nothing

@@ -12,11 +12,10 @@ Move the downloaded .xml files to the file locations (re)defined in the .ini fil
 
 Stopplace / destination lookups are potentially slow, especially for out-of-county journeys. After xml data is parsed once in a session, they are quicker. Do take
 care to reduce the amount of data by filtering early in the pipeline! Feedback from the pipeline is printed to stdout. For searches in other counties,
-adapting the .ini file order definitions is advised but not necessary.
+adapting the search file order (in the .ini file) is advised but not necessary.
 
-The `journey` function uses default filters and selectors. You override such filters
-by keyword arguments, e.g.: `journey(; inc_file_needle = "Ekspress")`. For example, there
-is a default date selection. Override it with `inc_date_match = ""` to get results for all dates.
+The `journey` function uses default filters and selectors defined in 'DEFAULT_SELECTORS'. You override such filters
+by keyword arguments, e.g.: `journey(; inc_file_needle = "Ekspress")`. 
 
 The return type is a vector of `StopsAndTime`. Geographical coordinates are given in UTM33 (easting, northing) coordinates, where one unit is very close to 1 meter.
 
@@ -66,4 +65,4 @@ function ServiceJourney(daytype_string; kw...)
 end
 ```
 
-Examples of traversing trees can be found in [EzXML.jl](https://github.com/JuliaIO/EzXML.jl).
+If you choose to traverse the xml trees instead, find examples in [EzXML.jl](https://github.com/JuliaIO/EzXML.jl).

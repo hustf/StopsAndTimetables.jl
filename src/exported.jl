@@ -112,7 +112,8 @@ function journeys(; kw...)
 end
 
 function journeys(kw::SelectorType)
-    report_selectors(kw)
+    print(stdout, "Current journey selector:  ")
+    show(stdout, MIME("text/plain"), DEFAULT_SELECTORS)
     # The output container. May be returned empty.
     vsat = StopsAndTime[]
     # daytype may indicate county, company, days of week etc.,

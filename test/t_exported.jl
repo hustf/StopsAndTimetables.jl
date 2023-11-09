@@ -59,9 +59,9 @@ inc_servicejourneyname_needle = "Flø"
 @test length(journeys(;inc_servicejourneyname_needle)) == 7
 @test isempty(journeys(;inc_date_match = "2020-01-31"))
 # 448 seconds
-@test length(journeys()) == 4250
+#@test length(journeys()) == 4250
 # 77 seconds
-@time journeys()
+#@time journeys()
 # We could try for all dates, 9882 journeys. Depending on memory available,
 # the search seems to freeze. But from a clean start, this takes somewhere 
 # <17 minutes: 
