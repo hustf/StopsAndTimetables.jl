@@ -8,34 +8,51 @@ journey_node is a ServiceJourney, but this could be extended to cover other jour
 
 # Example
 ```
-julia> using StopsAndTimetables: DayType_id
+julia> using StopsAndTimetables: DayType_id, journey_time_name_position, nodecontent
 
-julia> daytype_strings = nodecontent.(DayType_id("2023-09-18"))
-69-element Vector{String}:
- "MOR:DayType:NB248_Mo_13"
+julia> daytype_strings = nodecontent.(DayType_id("2023-11-04"))
+23-element Vector{String}:
+ "MOR:DayType:252_Sa_4"
+ "MOR:DayType:NB249_Sa_1"
+ "MOR:DayType:NB248_Sa_5"
+ "MOR:DayType:TID247_Sa_1"
  ⋮
+ "MOR:DayType:NB231_Sa_1"
+ "MOR:DayType:NB256_Sa_1"
+ "MOR:DayType:BO258_Sa_1"
+ "MOR:DayType:F1_Sa_4"
 
- julia> servicejourneys = ServiceJourney(daytype_strings; inc_file_needle = "Line")
- 4276-element Vector{EzXML.Node}:
-  EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x0000023a24c37970>)
-  ⋮
+julia> servicejourneys = ServiceJourney(daytype_strings; inc_file_needle = r"(L|l)ine")
+1774-element Vector{EzXML.Node}:
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e7b0361bf0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e904218160>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e57ea04bf0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e57ea36070>)
+ ⋮
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001ea9a912a70>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001eaade4ea70>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001eabd63a970>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001eabcb6f1f0>)
+
 julia> t, n, p = journey_time_name_position(servicejourneys[1]);
 
 julia> hcat(t, n, p)
-68×3 Matrix{Any}:
- "20:05:00"  "Kristiansund trafikkterminal"  (133975, 7019144)
- "20:05:00"  "Rådhusplassen"                 (133890, 7018783)
- "20:05:00"  "Nerparken"                     (133613, 7018803)
+125×3 Matrix{Any}:
+ "11:55:00"  "Ålesund rutebilstasjon"        (44874, 6957827)
+ "11:55:00"  "Blixvalen"                     (45365, 6957803)
+ "11:58:00"  "Nørvegata vest"                (47564, 6957541)
+ "11:59:00"  "Kolvikbakken"                  (47933, 6957539)
  ⋮
- "21:19:00"  "Moldegård"                     (101022, 6980564)
- "21:20:00"  "Molde ferjekai"                (100497, 6980635)
- "21:35:00"  "Molde trafikkterminal"         (100121, 6980683)
+ "15:40:00"  "Greves plass"                  (133593, 7018985)
+ "15:43:00"  "Kongens plass"                 (133671, 7018675)
+ "15:43:00"  "Rådhusplassen"                 (133890, 7018783)
+ "15:45:00"  "Kristiansund trafikkterminal"  (133975, 7019144)
 ```
 """
 function journey_time_name_position(journey_node::EzXML.Node; 
         stopplaces::EzXML.Node = stop_Places(), 
-        inc_stopname_needle = "", 
-        exc_stopname_needle = "",
+        inc_stopname_needle = r"", 
+        exc_stopname_needle = r"",
         inc_stoppos_match = nothing,
         exc_stoppos_match = nothing)
     nomatch_returnval = Vector{String}(), Vector{String}(), Vector{Tuple{Int64, Int64}}()
@@ -71,7 +88,6 @@ function journey_time_name_position(journey_node::EzXML.Node;
         end
         push!(ntuples, ntup)
     end
-
     # We put the still-missing data references in still_not_found_ref.
     still_not_found_ref = String[]
     for (ref, ntup) in zip(scheduledstoppointref_str, ntuples)
@@ -115,8 +131,8 @@ function journey_time_name_position(journey_node::EzXML.Node;
     stop_name = [tup.name for tup in ntuples]
     position = [(tup.x, tup.y) for tup in ntuples]
     # Exit gracefully if the 'inc_' arguments did not hit.
-    if ! isempty(inc_stopname_needle)
-        if ! any(semantic_contains.(stop_name, inc_stopname_needle))
+    if ! (inc_stopname_needle == r"")
+        if ! any(occursin.(inc_stopname_needle, stop_name))
             # @info "None of the stop names contained inc_stopname_needle = $inc_stopname_needle"
             return nomatch_returnval
         end
@@ -147,7 +163,7 @@ function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; kw...)
     # Vector{Tuple{Vector{String}, Vector{String}, Vector{{Tuple{Int64, Int64}}}}}
     tsp = Vector{Tuple}()
     for (n, source) in zip(journey_nodes, xml_sources)
-        if source !== ""
+        if ! (isempty(source))
             printstyled("    finding stops referred from journey in:   ", color = :light_black)
             printstyled(source,"\n", color = :light_black, bold = true)
         end
@@ -163,8 +179,8 @@ function journey_time_name_position(journey_nodes::Vector{EzXML.Node}; kw...)
 end
 
 """
-    ServiceJourney(daytype_strings::Vector{String}; inc_file_needle ="31")
-    ServiceJourney(daytype_string; inc_file_needle ="31")
+    ServiceJourney(daytype_strings::Vector{String}; inc_file_needle = r"31")
+    ServiceJourney(daytype_string; inc_file_needle = r"31")
     ---> Vector{EzXML.Node}
 
 # Example
@@ -172,45 +188,59 @@ end
 In the example, we find the operator name for indivual journeys. This is slow.
 
 ```
-julia> daytype_strings = ["MOR:DayType:NB248_Mo_13", "MOR:DayType:F1_Mo_2", "MOR:DayType:F1_Mo_24"];
-
-julia> nodes = ServiceJourney(daytype_strings; inc_file_needle ="1054")
-80-element Vector{EzXML.Node}:
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241ba04b170>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241ba04f9f0>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241ba0511f0>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241ba0571f0>)
+julia> daytype_strings = nodecontent.(DayType_id("2023-11-04"))
+23-element Vector{String}:
+ "MOR:DayType:252_Sa_4"
+ "MOR:DayType:NB249_Sa_1"
+ "MOR:DayType:NB248_Sa_5"
+ "MOR:DayType:TID247_Sa_1"
  ⋮
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241bd5262e0>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241bd52bd60>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x00000241bd52eee0>)
+ "MOR:DayType:NB256_Sa_1"
+ "MOR:DayType:BO258_Sa_1"
+ "MOR:DayType:F1_Sa_4"
 
- julia> for n in nodes
-             print(rpad(nodecontent(findfirst("x:Name", n, NS)), 30))
-             print(rpad("id: " * n["id"], 50))
-             println(rpad(nodecontent(Operator_name(n)), 40))
-        end
-Linge                                   id: MOR:ServiceJourney:1054_189_9150000004882301
-Linge                                   id: MOR:ServiceJourney:1054_187_9150000004882263
-Linge                                   id: MOR:ServiceJourney:1054_185_9150000009598678
-Linge                                   id: MOR:ServiceJourney:1054_183_9150000005952190
+julia> nodes = ServiceJourney(daytype_strings; inc_file_needle = r"1051")
+8-element Vector{EzXML.Node}:
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e5a3ad6060>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8aa73f7f0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8aa7410f0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8aa746d70>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8b6561de0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8b65629e0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8b65661e0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e8b6569a60>)
 
-julia> ServiceJourney("MOR:DayType:NB249_Mo_8")
-3-element Vector{EzXML.Node}:
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d59e5ce660>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d59e5dac60>)
- EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d59e607560>)
+julia> for n in nodes
+                    print(rpad(nodecontent(findfirst("x:Name", n, NS)), 30))
+                    print(rpad("id: " * n["id"], 50))
+                    println(rpad(nodecontent(Operator_name(n)), 40))
+               end
+Småge                         id: MOR:ServiceJourney:1051_607_9150000004382194  Torghatten Nord
+Småge                         id: MOR:ServiceJourney:1051_609_9150000006190930  Torghatten Nord
+Småge                         id: MOR:ServiceJourney:1051_605_9150000006190880  Torghatten Nord
+Småge                         id: MOR:ServiceJourney:1051_601_9150000006190730  Torghatten Nord
+Ona                           id: MOR:ServiceJourney:1051_612_9150000005077874  Torghatten Nord
+Ona                           id: MOR:ServiceJourney:1051_610_9150000005078007  Torghatten Nord
+Ona                           id: MOR:ServiceJourney:1051_608_9150000006191635  Torghatten Nord
+Ona                           id: MOR:ServiceJourney:1051_604_9150000006191681  Torghatten Nord
+
+julia> ServiceJourney("MOR:DayType:252_Sa_4")
+22-element Vector{EzXML.Node}:
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e6be3395e0>)
+ EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e6be33ac60>)
 ```
 """
 function ServiceJourney(daytype_strings::Vector{String}; kw...)
     rs = roots(;kw...)
     v = Vector{EzXML.Node}()
-    conditions = join(["@ref = \"$s\"" for s in daytype_strings], " or ")
-    xp = """//x:ServiceJourney/x:dayTypes/x:DayTypeRef[$conditions]/../.."""
-    for r in rs
-        v_a = findall(xp, r, NS)
-        if ! isempty(v_a)
-            append!(v, v_a)
+    if ! isempty(daytype_strings)
+        conditions = join(["@ref = \"$s\"" for s in daytype_strings], " or ")
+        xp = """//x:ServiceJourney/x:dayTypes/x:DayTypeRef[$conditions]/../.."""
+        for r in rs
+            v_a = findall(xp, r, NS)
+            if ! isempty(v_a)
+                append!(v, v_a)
+            end
         end
     end
     v
@@ -234,16 +264,16 @@ end
 
 # Example
 ```
-julia> s = first(ServiceJourney("MOR:DayType:NB249_Mo_8"))
-EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d5194d0960>)
+julia> using StopsAndTimetables: ServiceJourney, TimetabledPassingTime
+
+julia> s = first(ServiceJourney("MOR:DayType:252_Sa_4"))
+EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001e743d32870>)
 
 julia> pt = TimetabledPassingTime(s)
-25-element Vector{EzXML.Node}:
- EzXML.Node(<ELEMENT_NODE[TimetabledPassingTime]@0x000001d5194d0e60>)
- EzXML.Node(<ELEMENT_NODE[TimetabledPassingTime]@0x000001d5194d3560>)
- ⋮
- EzXML.Node(<ELEMENT_NODE[TimetabledPassingTime]@0x000001d5194da960>)
-
+2-element Vector{EzXML.Node}:
+ EzXML.Node(<ELEMENT_NODE[TimetabledPassingTime]@0x000001e743d34570>)
+ EzXML.Node(<ELEMENT_NODE[TimetabledPassingTime]@0x000001e743d33d70>)
+ ...
 ```
 """
 function TimetabledPassingTime(servicejourney::EzXML.Node)
@@ -259,23 +289,20 @@ end
 # Example
 
 ```
+julia> using StopsAndTimetables: nodecontent, DepartureTime_or_ArrivalTime
 julia> # pt defined in `TimetabledPassingTime` example
 
 julia> nodecontent(DepartureTime_or_ArrivalTime(pt[1]))
-"07:10:00"
-
+"08:55:00"
 
 julia> DepartureTime_or_ArrivalTime.(pt)
-25-element Vector{EzXML.Node}:
- EzXML.Node(<ELEMENT_NODE[DepartureTime]@0x000001d5194d27e0>)
- EzXML.Node(<ELEMENT_NODE[DepartureTime]@0x000001d5194d2160>)
- ⋮
- EzXML.Node(<ELEMENT_NODE[DepartureTime]@0x000001d5194da5e0>)
- EzXML.Node(<ELEMENT_NODE[ArrivalTime]@0x000001d5194db960>)
+2-element Vector{EzXML.Node}:
+ EzXML.Node(<ELEMENT_NODE[DepartureTime]@0x000001e743d34c70>)
+ EzXML.Node(<ELEMENT_NODE[ArrivalTime]@0x000001e743d347f0>)
 
- julia> println(join(nodecontent.(DepartureTime_or_ArrivalTime.(pt)), "   "))
- 07:10:00   07:14:00   07:14:00   07:14:00   07:15:00   07:16:00   07:16:00   07:17:00....
-  ```
+julia> println(join(nodecontent.(DepartureTime_or_ArrivalTime.(pt)), "   "))
+08:55:00   09:15:00
+```
 """
 function DepartureTime_or_ArrivalTime(timetabledpassingtime::EzXML.Node)
     @assert timetabledpassingtime.name == "TimetabledPassingTime" timetabledpassingtime.name
@@ -295,17 +322,12 @@ end
 
 # Example
 ```
+julia> using StopsAndTimetables: ScheduledStopPointRef_ref
+
 julia> # pt defined in `TimetabledPassingTime` example
 
 julia> nodecontent(ScheduledStopPointRef_ref(pt[1]))
-"MOR:ScheduledStopPoint:15343246"
-
-julia> nodecontent.(ScheduledStopPointRef_ref.(pt))
-25-element Vector{String}:
- "MOR:ScheduledStopPoint:15343246"
- "MOR:ScheduledStopPoint:15343498"
- ⋮
- "MOR:ScheduledStopPoint:15343230"
+"MOR:ScheduledStopPoint:15348339"
 ```
 """
 function ScheduledStopPointRef_ref(timetabledpassingtime::EzXML.Node)
@@ -329,7 +351,12 @@ end
 
 # Example
 ```
+julia> # s defined in TimetabledPassingTime
+
+julia> using StopsAndTimetables: start_and_end_time
+
 julia> start_and_end_time(s)[1]
+08:55:00
 
 ```
 """

@@ -37,45 +37,45 @@ A '_match' must match exactly, i.e. we can't give a range or set of criteria.
 If empty, e.g. `inc_operator_name = ""`, the corresponding filter is ignored.
 """
 const SelectorType = @NamedTuple begin
-    inc_file_needle::String
-    exc_file_needle::String
+    inc_file_needle::Regex
+    exc_file_needle::Regex
     exc_file_func::Function
     inc_date_match::String
     inc_time_match::Union{Time, Nothing}
-    inc_operatorname_needle::String
-    inc_linename_needle::String
+    inc_operatorname_needle::Regex
+    inc_linename_needle::Regex
     inc_destinationdisplayname_func::Function
-    inc_servicejourneyname_needle::String
-    inc_transportmode_needle::String
-    inc_stopname_needle::String
-    exc_stopname_needle::String
+    inc_servicejourneyname_needle::Regex
+    inc_transportmode_needle::Regex
+    inc_stopname_needle::Regex
+    exc_stopname_needle::Regex
     inc_stoppos_match::Union{Tuple{Int64, Int64}, Nothing}
     exc_stoppos_match::Union{Tuple{Int64, Int64}, Nothing}
 end
 
 
 const DEFAULT_SELECTORS = SelectorType((
-    inc_file_needle = "",                 # Include timetable files containing "331". See `filenames_xml`. Note: 7-bit ASCII
-    exc_file_needle = "tmp",              # Exclude timetable files containing "tmp". Note: 7-bit ASCII for some reason (no æøå)
+    inc_file_needle = r"",                 # Include timetable files containing "331". See `filenames_xml`. Note: 7-bit ASCII
+    exc_file_needle = r"tmp",              # Exclude timetable files containing "tmp". Note: 7-bit ASCII for some reason (no æøå)
     exc_file_func = (n) -> false,         # This default function excludes no filenames.
     #
     inc_date_match = "2023-10-26",        # Date to include. Returned result generally include other dates, too.
     #
     inc_time_match = nothing,             # Specific time to include, i.e. must be in the open interval start time to end time
     #
-    inc_operatorname_needle = "",         # E.g. "Vy", "Boreal", "Norled".
+    inc_operatorname_needle = r"",         # E.g. "Vy", "Boreal", "Norled".
     #
-    inc_linename_needle = "",             # E.g.  "Ekspressen Volda-Ålesund"
+    inc_linename_needle = r"",             # E.g.  "Ekspressen Volda-Ålesund"
     #
-    inc_destinationdisplayname_func = (n)->true,  # E.g. (n) -> semantic_contains(n, "skole") || semantic_contains(n, "skule")
+    inc_destinationdisplayname_func = (n)->true,  # E.g. (s) -> occursin(r"(S|s)k(o|u)le", s) && occursin(r"(B|b)arn", s)
     #
-    inc_servicejourneyname_needle = "",   # E.g.  "E39 "
+    inc_servicejourneyname_needle = r"",   # E.g.  "E39 "
     #
-    inc_transportmode_needle = "",        # E.g. "bus", "water", ""
+    inc_transportmode_needle = r"",        # E.g. "bus", "water", ""
 
-    inc_stopname_needle = "",             # E.g. "Moa"
+    inc_stopname_needle = r"",             # E.g. "Moa"
 
-    exc_stopname_needle = "",             # E.g. "Moa"
+    exc_stopname_needle = r"",             # E.g. "Moa"
 
     inc_stoppos_match  = nothing,          # E.g. (67209, 6904657), an easting, northing position
 
@@ -90,16 +90,21 @@ const DEFAULT_SELECTORS = SelectorType((
 
 # Example
 
+Using DEFAULT_SELECTORS. This takes minutes of running time - the first time every session.
 
-Use DEFAULT_SELECTORS
 ```
 julia> journeys()
+⋮
+3741-element Vector{StopsAndTime}:
+ StopsAndTime(["00:00:00", "00:15:00"], ["Sykkylven ferjekai", "Magerholm ferjekai"], [(64163, 6948438), (61894, 6951231)], "Magerholm", "Magerholm-Sykkylven", "water", "Fjord1", (Time(0), Time(0, 15)), "Magerholm", "MOR:ServiceJourney:1055_101_9150000004872374", "MOR_MOR-Line-1055_1055_Magerholm-Sykkylven.xml")
+ ⋮
+...
 ```
 """
 function journeys(; kw...)
     selectors_lenient = merge(DEFAULT_SELECTORS, kw)
     selectors = SelectorType(selectors_lenient)
-    if length(selectors) !== length(selectors_lenient)
+    if ! (length(selectors) == length(selectors_lenient))
         nokwd = setdiff(keys(selectors_lenient), keys(DEFAULT_SELECTORS))
         list = join(string.(keys(DEFAULT_SELECTORS)), ", ")
         msg = """Unrecognized keyword for `journeys`: $nokwd
@@ -112,8 +117,8 @@ function journeys(; kw...)
 end
 
 function journeys(kw::SelectorType)
-    print(stdout, "Current journey selector:  ")
-    show(stdout, MIME("text/plain"), DEFAULT_SELECTORS)
+    print(stdout, "Current journey selector is ")
+    show(stdout, MIME("text/plain"), kw)
     # The output container. May be returned empty.
     vsat = StopsAndTime[]
     # daytype may indicate county, company, days of week etc.,
@@ -135,9 +140,9 @@ function journeys(kw::SelectorType)
     #
     # Now reduce the number of elements based on _servicejourneyname_ selectors:
     servicejourney_name = nodecontent.(descendent_Name.(servicejourneys))
-    if ! isempty(kw.inc_servicejourneyname_needle)
+    if ! (kw.inc_servicejourneyname_needle == r"")
         filter_all_based_on_first_vector!(servicejourney_name, servicejourneys) do nam
-            semantic_contains(nam, kw.inc_servicejourneyname_needle)
+            occursin(kw.inc_servicejourneyname_needle, nam)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ servicejourneyname ")
@@ -153,26 +158,26 @@ function journeys(kw::SelectorType)
     isempty(servicejourneys) && return vsat
     # Now reduce the number of elements based on _operatorname_ selectors:
     operator_name = Operator_name(servicejourneys) .|> nodecontent
-    if ! isempty(kw.inc_operatorname_needle)
+    if ! (kw.inc_operatorname_needle == r"")
         filter_all_based_on_first_vector!(operator_name, timespans, servicejourney_name, servicejourneys) do nam
-            semantic_contains(nam, kw.inc_operatorname_needle)
+            occursin(kw.inc_operatorname_needle, nam)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ operatorname ")
     isempty(servicejourneys) && return vsat
     # Now reduce the number of elements based on _linename_ selectors:
     line_name, transport_mode = Line_Name_and_TransportMode_string(servicejourneys)
-    if ! isempty(kw.inc_linename_needle)
+    if ! (kw.inc_linename_needle == r"")
         filter_all_based_on_first_vector!(line_name, transport_mode, operator_name, timespans, servicejourney_name, servicejourneys) do nam
-            semantic_contains(nam, kw.inc_linename_needle)
+            occursin(kw.inc_linename_needle, nam)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ linename ")
     isempty(servicejourneys) && return vsat
     # Now reduce the number of elements based on _transportmode_ selectors:
-    if ! isempty(kw.inc_transportmode_needle)
+    if ! (kw.inc_transportmode_needle == r"")
         filter_all_based_on_first_vector!( transport_mode, line_name, operator_name, timespans, servicejourney_name, servicejourneys) do nam
-            semantic_contains(nam, kw.inc_transportmode_needle)
+            occursin(kw.inc_transportmode_needle, nam)
         end
     end
     report_length("journeys", servicejourneys; prefix = " ✂ transportmode ")

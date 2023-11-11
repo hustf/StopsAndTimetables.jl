@@ -1,16 +1,24 @@
 """
-    filenames_xml(; inc_file_needle = "line",  exc_file_needle = "", exc_file_func = (nam) -> false, pth = TIME_TABLE_DIR)
+    filenames_xml(; inc_file_needle = r"(L|l)ine",  exc_file_needle = r"", exc_file_func = (nam) -> false, pth = TIME_TABLE_DIR)
     ---> Vector{String}
 
 
 # Example
 ```
+julia> using StopsAndTimetables: filenames_xml
+
 julia> filenames_xml()
-157-element Vector{String}:
-    "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 26 bytes ⋯ "MOR-Line-100_100_Ekspressen.xml"
-    "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 40 bytes ⋯ "01_Ekspressen-Volda-Alesund.xml"
-    ⋮
-    "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 45 bytes ⋯ "lde-Kristiansund-Trondheim,.xml"
+158-element Vector{String}:
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 26 bytes ⋯ "MOR-Line-100_100_Ekspressen.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 40 bytes ⋯ "01_Ekspressen-Volda-Alesund.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 37 bytes ⋯ "49_1049_Festoya-Hundeidvika.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 30 bytes ⋯ "Line-1050_1050_Molde-Sekken.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 43 bytes ⋯ "1_Smage-Finnoya-Sandoya-Ona.xml"
+ ⋮
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 43 bytes ⋯ "Kristiansund-Oppdal-Togbuss.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 42 bytes ⋯ "_Surnadal-Molde,-MORELINJEN.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAnd" ⋯ 45 bytes ⋯ "lde-Kristiansund-Trondheim,.xml"
+ "C:\\Users\\frohu_h4g8g6y\\StopsAndTimetables\\Timetables\\_MOR_shared_data.xml"
     
 ```
     
@@ -18,21 +26,17 @@ julia> filenames_xml()
     Return full path filenames fulfilling all, based on file name without path:
 
  - ending in .xml
- - filename without path includes  `inc_file_needle`
+ - filename without path includes `inc_file_needle`
  - ...excludes `exc_file_needle`
  - exclude_file_func(filename) returns false
 
-inc_ and exc_ filters are disabled if values are empty strings.
-
-Punctuation in filenames as well as case is ignored, see `semantic_contains`.
-
-
+inc_ and exc_ filters are disabled if values are empty regexes.
 """
-function filenames_xml(; inc_file_needle = "",  exc_file_needle = "", exc_file_func = (nam) -> false, pth = TIME_TABLE_DIR)
+function filenames_xml(; inc_file_needle = r"",  exc_file_needle = r"", exc_file_func = (nam) -> false, pth = TIME_TABLE_DIR)
     @assert isdir(pth)
     fs = filter(f -> endswith(f, ".xml"), readdir(pth, join = true))
-    isempty(inc_file_needle) || filter!(f -> semantic_contains(last(splitpath(f)), inc_file_needle), fs)
-    isempty(exc_file_needle) || filter!(f -> ! semantic_contains(last(splitpath(f)), exc_file_needle), fs)
+    inc_file_needle == r"" || filter!(f -> occursin(inc_file_needle, last(splitpath(f))), fs)
+    exc_file_needle == r"" || filter!(f -> ! occursin(exc_file_needle, last(splitpath(f))), fs)
     filter!(f -> ! exc_file_func(last(splitpath(f))), fs)
 end
 
@@ -108,25 +112,14 @@ function semantic_string(x)
 end
 
 """
-    semantic_contains(haystack::AbstractString, y::AbstractString)
-
-Return true if haystack contains needle.
-Both arguments are stripped anything but letters and digits,
-and converted to lowercase.
-
-TODO: Replace with calling `occursin`. Accept regex or string as needle.
-"""
-function semantic_contains(haystack::AbstractString, needle::AbstractString)
-    contains(semantic_string(haystack), semantic_string(needle))
-end
-
-"""
     is_time_part_of_open_interval(x, timespan)
     ---> Bool
 
 # Example
 ```
 julia> using Dates: Time
+
+julia> using StopsAndTimetables: is_time_part_of_open_interval
 
 julia> is_time_part_of_open_interval(Time("13:02:55"), (Time("20:00"), Time("21:00")))
 false
@@ -135,7 +128,6 @@ julia> is_time_part_of_open_interval(Time("20:02:55"), (Time("20:00"), Time("21:
 true
 
 julia> is_time_part_of_open_interval(Time("20:02:55"), (Time("20:00"), Time("03:00")))
-true
 ```
 """
 function is_time_part_of_open_interval(x, timespan)

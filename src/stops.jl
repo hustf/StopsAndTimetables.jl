@@ -1,19 +1,21 @@
 """
     name_and_position_of_stop(scheduledstoppointref_str::Vector{String}; 
         stopplaces::EzXML.Node = stop_Places(),
-        exc_stopname_needle = "", exc_stoppos_match = nothing)
+        exc_stopname_needle = r"", exc_stoppos_match = nothing)
     ---> Vector{NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}}
 
 # Example
 ```
-julia> name_and_position_of_stop(["MOR:ScheduledStopPoint:15046005_5"])
+julia> using StopsAndTimetables: name_and_position_of_stop
+
+julia> name_and_position_of_stop(["MOR:ScheduledStopPoint:15046004"])
 1-element Vector{NamedTuple{(:name, :x, :y), Tuple{String, Int64, …}}}:
  (name = "Ålesund rutebilstasjon", x = 44874, y = 6957827)
 ```
 """
 function name_and_position_of_stop(scheduledstoppointref_str::Vector{String}; 
         stopplaces::EzXML.Node = stop_Places(),
-        exc_stopname_needle = "", exc_stoppos_match = nothing)
+        exc_stopname_needle = r"", exc_stoppos_match = nothing)
     empty_return = [(name = "", x = 0, y = 0)]
     happy_return = typeof(empty_return)()
     # Change the reference format from the one found in timetables
@@ -87,8 +89,8 @@ function StopPlace_or_quay_successive_search(ref_str, stopplaces)
     spoq
 end
 function is_stopname_excluded(exc_stopname_needle, stop_name)
-    if ! isempty(exc_stopname_needle)
-        if semantic_contains(stop_name, exc_stopname_needle)
+    if ! (exc_stopname_needle == r"")
+        if occursin(exc_stopname_needle, stop_name)
             # this entire journey does not accord to selectors. Stop early!
             return true
         end
@@ -119,6 +121,8 @@ if 'StopPlace' is not found.
 
 # Example
 ```
+julia> using StopsAndTimetables: stopplaceref_from_scheduledstoppointref
+
 julia> stopplaceref_from_scheduledstoppointref("MOR:ScheduledStopPoint:15046005_5")
 "MOR:StopPlace:15046005"
 ```

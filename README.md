@@ -15,7 +15,7 @@ care to reduce the amount of data by filtering early in the pipeline! Feedback f
 adapting the search file order (in the .ini file) is advised but not necessary.
 
 The `journey` function uses default filters and selectors defined in 'DEFAULT_SELECTORS'. You override such filters
-by keyword arguments, e.g.: `journey(; inc_file_needle = "Ekspress")`. 
+by keyword arguments, e.g.: `journey(; inc_file_needle = r"(E|e)kspress")`. 
 
 The return type is a vector of `StopsAndTime`. Geographical coordinates are given in UTM33 (easting, northing) coordinates, where one unit is very close to 1 meter.
 
@@ -29,10 +29,10 @@ The return type is a vector of `StopsAndTime`. Geographical coordinates are give
 julia> using StopsAndTimetables, Dates
 
 julia> begin
-        inc_date_match = "2023-10-01"
+        inc_date_match = "2023-11-15"
         inc_time_match = Time("18:00")
-        inc_file_needle = "Volda"
-        inc_transportmode_needle = "water"
+        inc_file_needle = r"Volda"
+        inc_transportmode_needle = r"(W|w)ater"
     end;
 
 julia> # The following takes ~5 seconds the first time.

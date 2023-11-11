@@ -9,7 +9,7 @@ using StopsAndTimetables: filenames_xml, root_of_file
 allfiles = map(f -> splitpath(f)[end], filenames_xml())
 sharedfile = filenames_xml()[end]
 root_shared = root_of_file(sharedfile)
-timefile = filenames_xml(;inc_file_needle = "330")[1]
+timefile = filenames_xml(;inc_file_needle = r"330")[1]
 root_time = root_of_file(timefile)
 all_stop_files = map(f -> splitpath(f)[end], filenames_xml(; pth = StopsAndTimetables.STOPPLACE_FILES_DIR))
 stopfile = all_stop_files[3]

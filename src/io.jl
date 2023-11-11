@@ -50,11 +50,16 @@ function Base.show(io::IO, ::MIME"text/plain", kw::SelectorType)
     for fi in fieldnames(SelectorType)
         val = kw[fi]
         color = :normal
-        if val isa String # TODO change all to regex? Print like r"ab"
+        if val isa String
             if val == ""
                 color = :light_black
             end
             val = "\"" * val * "\""
+        elseif val isa Regex
+            if val == ""
+                color = :light_cyan
+            end
+            #val = "\"" * val * "\""
         elseif val isa Union{Tuple{Int64, Int64}, Nothing}
             if isnothing(val)
                 color = :light_black

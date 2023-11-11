@@ -1,5 +1,5 @@
 """
-    DestinationDisplay_name(destination_display_ref_str; inc_file_needle = "_shared_data")
+    DestinationDisplay_name(destination_display_ref_str; inc_file_needle = r"_shared_data")
     ---> EzXML.Node
 
 # Example
@@ -11,7 +11,7 @@ julia> nodecontent(ans)
 "Innlandet"
 ```
 """
-function DestinationDisplay_name(destination_display_ref_str; inc_file_needle = "_shared_data")
+function DestinationDisplay_name(destination_display_ref_str; inc_file_needle = r"_shared_data")
     @assert contains(destination_display_ref_str, ":DestinationDisplay:") destination_display_ref_str
     rs = roots(;inc_file_needle)
     @assert length(rs) == 1
@@ -26,8 +26,10 @@ end
 
 # Example
 ```
-julia> DestinationDisplay_name(servicejourney) |> nodecontent
-"Kvanne"
+julia> using StopsAndTimetables: DestinationDisplay_name, nodecontent
+
+julia> DestinationDisplay_name("MOR:DestinationDisplay:9150000010619221") |> nodecontent
+"Innlandet"
 ```
 """
 function DestinationDisplay_name(servicejourney::EzXML.Node)
@@ -53,7 +55,7 @@ end
 
 
 """
-    DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = "_shared_data")
+    DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = r"_shared_data")
     ---> Vector{EzXML.Node}
 
 # Example
@@ -73,7 +75,7 @@ julia> DestinationDisplay_name(servicejourneys) .|> nodecontent
  "Kristiansund-Molde-Ålesund"
 ```
 """
-function DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = "_shared_data")
+function DestinationDisplay_name(servicejourneys::Vector{EzXML.Node}; inc_file_needle = r"_shared_data")
     rs = roots(;inc_file_needle)
     @assert length(rs) == 1
     xp = "x:dataObjects/x:CompositeFrame/x:frames/x:ServiceFrame/x:destinationDisplays"
@@ -97,6 +99,8 @@ end
 
 # Example
 ```
+julia> using StopsAndTimetables: JourneyPattern, elements, nodename
+
 julia> JourneyPattern(servicejourney) |> elements .|> nodename
 4-element Vector{String}:
  "Name"

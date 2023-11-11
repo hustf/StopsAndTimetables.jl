@@ -1,39 +1,44 @@
 """
-    OperatingPeriod_id(date::String; inc_file_needle = "_shared_data")
-    OperatingPeriod_id(date::Date; inc_file_needle = "_shared_data")
+    OperatingPeriod_id(date::String; inc_file_needle = r"_shared_data")
+    OperatingPeriod_id(date::Date; inc_file_needle = r"_shared_data")
     OperatingPeriod_id(date::Date, r::EzXML.Node)
     ---> Vector{EzXML.Node}
 
-The date format must be yyyy-mm-dd.
+The date format must be yyyy-mm-dd, as in the .xml files.
+This is easily convertible to strings, both ways, without dependencies.
 This function finds and parses *inc_file_needle*.xml.
 
 
 # Example
 ```
-julia> idnodes = OperatingPeriod_id("2023-09-04")
-355-element Vector{EzXML.Node}:
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001a86dec0f40>)
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001a86dec05a0>)
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001a86dec0920>)
+julia> idnodes = StopsAndTimetables.OperatingPeriod_id("2023-11-04")
+308-element Vector{EzXML.Node}:
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e3505000>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e3506260>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e3504a50>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e3504cf0>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e3504f20>)
  ⋮
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001a875a34460>)
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001a875a34310>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e364ea50>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e364faf0>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e364ee40>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4e36501f0>)
 ```
 
 
 """
-function OperatingPeriod_id(date::String; inc_file_needle = "_shared_data")
+function OperatingPeriod_id(date::String; inc_file_needle = r"_shared_data")
     dt = tryparse(Date, date)
     if isnothing(dt) || Dates.year(dt) < 2000
         throw(ArgumentError("Date format not yyyy-mm-dd: $date"))
     end
     OperatingPeriod_id(dt; inc_file_needle)
 end
-function OperatingPeriod_id(date::Date; inc_file_needle = "_shared_data")
+function OperatingPeriod_id(date::Date; inc_file_needle = r"_shared_data")
     rs = roots(; inc_file_needle)
     @assert length(rs) == 1  """We could not identify the shared file to use. There are $(length(rs)):
         \t$rs
-        \tinc_file_needle = "$inc_file_needle"
+        \tinc_file_needle = $inc_file_needle
         """
     OperatingPeriod_id(date, rs[1])
 end
@@ -53,21 +58,26 @@ end
 
 
 """
-     DayTypeAssignment(date; inc_file_needle = "_shared_data")
+     DayTypeAssignment(date; inc_file_needle = r"_shared_data")
      ---> Vector{EzXML.Node}
  
  # Example
  ```
- julia> DayTypeAssignment("2023-09-23")
- 362-element Vector{EzXML.Node}:
- EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001fa15aa3d70>)
- EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001fa15a3edf0>)
- ⋮
- EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001fa15a328f0>)
-
+ julia> StopsAndTimetables.DayTypeAssignment("2023-11-04")
+ 314-element Vector{EzXML.Node}:
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e48f4970>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e473f870>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e48533e0>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e47fe260>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e48cde70>)
+  ⋮
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e47da5e0>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e4856660>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e4882660>)
+  EzXML.Node(<ELEMENT_NODE[DayTypeAssignment]@0x000001e4e48e8b70>)
  ```
  """
-function DayTypeAssignment(date; inc_file_needle = "_shared_data")
+function DayTypeAssignment(date; inc_file_needle = r"_shared_data")
     id_nodes = OperatingPeriod_id(date; inc_file_needle)
     length(id_nodes) == 0 && return Vector{EzXML.Node}()
     dta = findfirst("//x:dayTypeAssignments", first(id_nodes), NS)
@@ -82,12 +92,12 @@ function DayTypeAssignment(date; inc_file_needle = "_shared_data")
 end
 
 """
-    DayTypeRef_ref(date; inc_file_needle = "_shared_data")
+    DayTypeRef_ref(date; inc_file_needle = r"_shared_data")
     ---> Vector{EzXML.Node(<ATTRIBUTE_NODE[ref]@0x000001a805a3ace0>)} 
 
 Since this returns specifically attribute nodes, we can access the values with `nodecontent`
 """
-function DayTypeRef_ref(date; inc_file_needle = "_shared_data")
+function DayTypeRef_ref(date; inc_file_needle = r"_shared_data")
     assignment_nodes = DayTypeAssignment(date; inc_file_needle)
     map(assignment_nodes) do n
         findfirst("x:DayTypeRef/@ref", n, NS)
@@ -95,8 +105,8 @@ function DayTypeRef_ref(date; inc_file_needle = "_shared_data")
 end
 
 """
-    DayType_id(date; inc_file_needle = "_shared_data")
-    DayType_id(date::Date; inc_file_needle = "_shared_data")
+    DayType_id(date; inc_file_needle = r"_shared_data")
+    DayType_id(date::Date; inc_file_needle = r"_shared_data")
     ---> Vector{EzXML.Node}
 
 id attribute nodes of daytypes where 
@@ -113,24 +123,29 @@ or
 
 # Example
 ```
-julia> DayType_id("2023-09-23")
-31-element Vector{EzXML.Node}:
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001fa08293db0>)
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001fa0829e2a0>)
- ⋮
- EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001fa08291f10>)
+julia> using StopsAndTimetables: DayType_id
 
- julia> ans .|> nodecontent
- 32-element Vector{String}:
- "MOR:DayType:F1_Sa_18"
- "MOR:DayType:NB248_Sa_18"
+julia> DayType_id("2023-11-04")
+23-element Vector{EzXML.Node}:
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edbddc30>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edcbe470>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edbdd840>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edcc4ec0>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edcc2060>)
  ⋮
- "MOR:DayType:BO258_Sa_1"
- "MOR:DayType:NB231_Sa_14"
- "MOR:DayType:FJ009_Sa_4"
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edbd10c0>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edbe0b00>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edbdef00>)
+ EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4edbd18a0>)
+
+ julia> using Dates; DayType_id(Date("4/11-2023", "dd/mm-yy"))
+ 23-element Vector{EzXML.Node}:
+  EzXML.Node(<ATTRIBUTE_NODE[id]@0x000001e4f7d64860>)
+  ...
+ ...
 ```
 """
-function DayType_id(date; inc_file_needle = "_shared_data")
+function DayType_id(date; inc_file_needle = r"_shared_data")
     if ! isempty(date)
         dt = tryparse(Date, date)
         if isnothing(dt) || Dates.year(dt) < 2000
@@ -142,7 +157,7 @@ function DayType_id(date; inc_file_needle = "_shared_data")
         DayType_id(; inc_file_needle)
     end
 end
-function DayType_id(date::Date; inc_file_needle = "_shared_data")
+function DayType_id(date::Date; inc_file_needle = r"_shared_data")
     # All the daytype references from dayTypeAssignments
     # Hundreds of these, but some daytypes are not assigned,
     # so we may save work here.
@@ -153,22 +168,23 @@ function DayType_id(date::Date; inc_file_needle = "_shared_data")
     # Parent of daytypes for faster search.
     dty = findfirst("//x:dayTypes", first(dtref_node), NS)
     node_or_nothing = map(dtref_str) do dtr
-        # This is problematic. Some do not have daysofweek.
+        # This is problematic. Some of the elements contain
+        # daysofweek, others do not. Have we really covered all
+        # ways of linking date to daytype?
         xp = """x:DayType [@id = "$dtr"
             and
             x:properties/x:PropertyOfDay/x:DaysOfWeek = "$(dayname(date))"]/@id"""
         findfirst(xp, dty, NS)
     end
     matches = filter(n -> !isnothing(n), node_or_nothing)
-
     Vector{EzXML.Node}(matches)
 end
-function DayType_id(; inc_file_needle = "_shared_data")
+function DayType_id(; inc_file_needle = r"_shared_data")
     # No date provided; return all
     rs = roots(; inc_file_needle)
     @assert length(rs) == 1  """We could not identify the shared file to use. There are $(length(rs)):
         \t$rs
-        \tinc_file_needle = "$inc_file_needle"
+        \tinc_file_needle = $inc_file_needle
         """
     r = first(rs)
     dayTypes = findfirst("//x:dayTypes", r, NS)

@@ -9,14 +9,13 @@ There is only one line per file containing servicejourneys.
 
 # Example
 ```
-julia> s = first(ServiceJourney("MOR:DayType:NB249_Mo_8"))
-EzXML.Node(<ELEMENT_NODE[ServiceJourney]@0x000001d597fd90e0>)
+julia> using StopsAndTimetables: ServiceJourney, Line_Name_and_TransportMode_string
 
 julia> Line_Name_and_TransportMode_string(s)
-"Brattvåg-Skjeltene-Brattvåg"
+("Brattvåg-Ålesund", "bus")
 
 julia> Line_Name_and_TransportMode_string(ServiceJourney("MOR:DayType:NB249_Mo_8"))
-(["Ekspressen", "Ekspressen", "Ekspressen", "Ekspressen", "Ekspressen", "Valldal-Sjøholt-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Skjeltene-Brattvåg"  …  "Brattvåg-Skjeltene-Brattvåg", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Skodje-Ålesund", "Skodje-Ålesund", "Skodje-Ålesund", "Skodje-Ålesund", "Skodje-Ålesund"], ["bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus"  …  "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus"])
+(["Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Ålesund", "Brattvåg-Skjeltene-Brattvåg", "Brattvåg-Skjeltene-Brattvåg"  …  "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya", "Lepsøya"], ["bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus"  …  "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus", "bus"])  
 ```
 """
 function Line_Name_and_TransportMode_string(node::EzXML.Node)
