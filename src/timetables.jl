@@ -54,7 +54,11 @@ function journey_time_name_position(journey_node::EzXML.Node;
         inc_stopname_needle = r"", 
         exc_stopname_needle = r"",
         inc_stoppos_match = nothing,
-        exc_stoppos_match = nothing)
+        exc_stoppos_match = nothing,
+        exc_stopnorthing_below = nothing,
+        exc_stopnorthing_above = nothing, 
+        exc_stopeasting_below = nothing,  
+        exc_stopeasting_above = nothing)
     nomatch_returnval = Vector{String}(), Vector{String}(), Vector{Tuple{Int64, Int64}}()
     #
     # Reading time from within the journey's document. Likely a fast operation.
@@ -76,13 +80,15 @@ function journey_time_name_position(journey_node::EzXML.Node;
         ntup = get(STOPDICT, ref, (name = "", x = 0, y = 0))
         if ! iszero(ntup.x)
             # We have parsed this stop from xml before.
-            # Exit gracefully if ref is to an excluding criterion.
-            if is_stopname_excluded(exc_stopname_needle, ntup.name)
-                @info "Journey stops search aborted because of exc_stopname_needle"
-                return nomatch_returnval
-            end
-            if is_stoppos_excluded(exc_stoppos_match, (ntup.x, ntup.y) )
-                @info "Journey stops search aborted because of exc_stoppos_match"
+            # Check if it is excluded from this search.
+            if is_stopname_excluded(exc_stopname_needle, ntup.name) ||
+                is_stop_coordinate_outside_limits(exc_stopnorthing_below, exc_stopnorthing_above, 
+                        exc_stopeasting_below, exc_stopeasting_above, (ntup.x, ntup.y)) ||
+                is_stoppos_excluded(exc_stoppos_match, (ntup.x, ntup.y) )
+                # In deed
+                printstyled("\tJourney $(journey_node["id"]) dropped because ", color = :light_cyan)
+                print_stop(ntup)
+                printstyled(" (from dict) is excluded.\n", color = :light_cyan)
                 return nomatch_returnval
             end
         end
@@ -102,9 +108,12 @@ function journey_time_name_position(journey_node::EzXML.Node;
         # If we encounter an excluding stopname or position, returns fast with empty results.
         # Hence, empty results is an exit criterion here too.
         @debug journey_node["id"]  still_not_found_ref time_str
-        found = name_and_position_of_stop(still_not_found_ref; stopplaces, exc_stopname_needle, exc_stoppos_match)
+        found = name_and_position_of_stop(still_not_found_ref; stopplaces, exc_stopname_needle, exc_stoppos_match, 
+            exc_stopnorthing_below, exc_stopnorthing_above, exc_stopeasting_below, exc_stopeasting_above)
         if first(found).x == 0
-            @info "Search aborted because of excluded stop"
+            printstyled("\tJourney ", color = :light_cyan)
+            printstyled(journey_node["id"], color = :light_black)
+            printstyled(" dropped because at least one stop is excluded.\n", color = :light_cyan)
             return nomatch_returnval
         end
         @assert found isa Vector{NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}}}
@@ -118,8 +127,8 @@ function journey_time_name_position(journey_node::EzXML.Node;
         println()
         println(rpad("    $(length(found)) new stop points parsed from xml:", 44), "    Easting     Northing")
         for nt in found
-            printstyled("    ", rpad(nt.name, 40), color = :blue)
-            printstyled("    ", rpad(nt.x, 12), rpad(nt.y, 12), "\n", color = :blue)
+            print_stop(nt)
+            println()
         end
         println()
     end
@@ -133,13 +142,17 @@ function journey_time_name_position(journey_node::EzXML.Node;
     # Exit gracefully if the 'inc_' arguments did not hit.
     if ! (inc_stopname_needle == r"")
         if ! any(occursin.(inc_stopname_needle, stop_name))
-            # @info "None of the stop names contained inc_stopname_needle = $inc_stopname_needle"
+            printstyled("\tJourney $(journey_node["id"]) dropped because no stop names contains ", color = :light_cyan)
+            printstyled(inc_stopname_needle, color = :bold)
+            printstyled(".\n", color = :light_cyan)
             return nomatch_returnval
         end
     end
     if ! isnothing(inc_stoppos_match)
         if ! any(map(p -> p == inc_stoppos_match, position))
-            # @info "None of the stop positions matched inc_stoppos_match = $inc_stoppos_match"
+            printstyled("\tJourney $(journey_node["id"]) dropped because no stop position contains ", color = :light_cyan)
+            printstyled(inc_stoppos_match, color = :bold)
+            printstyled(".\n", color = :light_cyan)
             return nomatch_returnval
         end
     end

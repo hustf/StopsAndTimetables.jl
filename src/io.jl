@@ -70,6 +70,10 @@ function Base.show(io::IO, ::MIME"text/plain", kw::SelectorType)
             if isnothing(val)
                 color = :light_black
             end
+        elseif val isa Union{Int64, Nothing}
+            if isnothing(val)
+                color = :light_black
+            end
         else
             if isempty(val)
                 color = :light_black

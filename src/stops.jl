@@ -15,13 +15,18 @@ julia> name_and_position_of_stop(["MOR:ScheduledStopPoint:15046004"])
 """
 function name_and_position_of_stop(scheduledstoppointref_str::Vector{String}; 
         stopplaces::EzXML.Node = stop_Places(),
-        exc_stopname_needle = r"", exc_stoppos_match = nothing)
+        exc_stopname_needle = r"", 
+        exc_stoppos_match = nothing,
+        exc_stopnorthing_below = nothing,
+        exc_stopnorthing_above = nothing, 
+        exc_stopeasting_below = nothing,  
+        exc_stopeasting_above = nothing)
     empty_return = [(name = "", x = 0, y = 0)]
     happy_return = typeof(empty_return)()
-    # Change the reference format from the one found in timetables
-    # to the one used in the National Stopplace Register
-    ref_strs = stopplaceref_from_scheduledstoppointref.(scheduledstoppointref_str)
-    for (i, ref_str) in enumerate(ref_strs)
+    for (i, orig_ref_str) in enumerate(scheduledstoppointref_str)
+        # Change the reference format from the one found in timetables
+        # to the one (of two) used in the National Stopplace Register
+        ref_str = stopplaceref_from_scheduledstoppointref(orig_ref_str)
         # Find this in NSR
         spoq = StopPlace_or_quay_successive_search(ref_str, stopplaces)
         if ! isnothing(spoq)
@@ -33,22 +38,53 @@ function name_and_position_of_stop(scheduledstoppointref_str::Vector{String};
             # In a very small-scale map, such errors are to be expected.
             # Instead, we issued a warning on a lower level, and repeat the previous stop.
             # This goes against the fail-early principle...
-            if i > 1 && length(ref_strs) > 1
-                spoq = StopPlace_or_quay_successive_search(ref_strs[i - 1], stopplaces)
-            elseif length(ref_strs) > 1
-                spoq = StopPlace_or_quay_successive_search(ref_strs[i + 1], stopplaces)
+            if i > 1 && length(scheduledstoppointref_str) > 1
+                neighbour_orig_ref = stopplaceref_from_scheduledstoppointref(scheduledstoppointref_str[i - 1])
+                neighbour_ref = stopplaceref_from_scheduledstoppointref(neighbour_orig_ref)
+                @warn "Replacing missing stop with previous: $neighbour_orig_ref => neighbour_ref "
+                spoq = StopPlace_or_quay_successive_search(neighbour_ref , stopplaces)
+            elseif length(scheduledstoppointref_str) > 1
+                neighbour_orig_ref = stopplaceref_from_scheduledstoppointref(scheduledstoppointref_str[i + 1])
+                neighbour_ref = stopplaceref_from_scheduledstoppointref(neighbour_orig_ref)
+                @warn "Replacing missing stop with next: $neighbour_orig_ref => neighbour_ref "
+                spoq = StopPlace_or_quay_successive_search(neighbour_ref , stopplaces)
             else
-                throw("Could not find $ref_str, and this function has no info on neighbouring stops.")
+                throw("Could not find $orig_ref_str => $ref_str , and this function has no info on neighbouring stops.")
+            end
+            if isnothing(spoq)
+                println("Dumping scheduledstoppointref_str and results so far:")
+                for (i, ref) in enumerate(scheduledstoppointref_str)
+                    print("i = $i $(rpad(ref, 45))")
+                    if i <= length(happy_return)
+                        print_stop(happy_return[i])
+                    end
+                    println()
+                end
+                throw("Cannot continue search with neighbouring missing stop places. i = $i length(scheduledstoppointref_str) = $(length(scheduledstoppointref_str))")
             end
             stop_name = nodecontent(descendent_Name(spoq)) * " NA: " * ref_str
         end
-        # If journeys with this stop is excluded, return
-        # before looking for more useless stops.
-        if is_stopname_excluded(exc_stopname_needle, stop_name)
-            return empty_return
-        end
         x, y = easting_northing(spoq)
-        if is_stoppos_excluded(exc_stoppos_match, (x, y))
+        # If journeys with this stop is excluded
+        if is_stopname_excluded(exc_stopname_needle, stop_name) || 
+            is_stoppos_excluded(exc_stoppos_match, (x, y)) ||
+            is_stop_coordinate_outside_limits(exc_stopnorthing_below, exc_stopnorthing_above, 
+                exc_stopeasting_below, exc_stopeasting_above, (x, y))
+            #
+            # This search is unsuccessful
+            ntupl = (name = stop_name, x = x, y = y)
+            printstyled("\t\tStop ", color = :light_cyan)
+            print_stop(ntupl)
+            printstyled(" is excluded.\n", color = :light_cyan)
+            # Still, remember all the stops we found so far for later searches, to save time.
+            stops_to_remember = vcat(happy_return, ntupl)
+            for (ref, ntup) in zip(scheduledstoppointref_str, stops_to_remember)
+                pair = ref => ntup
+                @assert pair[2] isa NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}} "Bad data type: $(pair)"
+                @assert STOPDICT isa Dict{String, NamedTuple{(:name, :x, :y), Tuple{String, Int64, Int64}}}
+                push!(STOPDICT, pair)
+            end
+            # Return but no cigar
             return empty_return
         end
         push!(happy_return, (name = stop_name, x = x, y = y))
@@ -74,16 +110,19 @@ function StopPlace_or_quay_successive_search(ref_str, stopplaces)
             alt_stopplaces = stop_Places(;file_with_path)
             spoq = StopPlace_or_Quay(ref_str, alt_stopplaces)
             if ! isnothing(spoq)
-                @info "Found stopplace in alternative source $i, \n\t\t$(filename_from_root_attribute(alt_stopplaces))"
+                printstyled("\t\tFound stopplace ", color =:light_cyan)
+                printstyled(ref_str, color =:bold)
+                printstyled(" in alternative source, \n\t\t$(filename_from_root_attribute(alt_stopplaces))\n", color =:ligt_cyan)
                 if i > 1
                     shift_to_front!(ORDERED_STOPPLACE_FILES, i)
                 end
                 return spoq
             end
         end
-        @warn "Could not find stop or quay from $ref_str"
+        @warn """Could not find stop or quay from $ref_str, recommend downloading more stops files or defining it manually in "user_additions.xml" """
         # This can be a result from errors in the xml data, inconsistent revisions,
         # or a stop place that is used during some seasons only.
+        # 
         return nothing # TEMP experiment.
     end
     spoq
@@ -104,6 +143,16 @@ function is_stoppos_excluded(exc_stoppos_match, stop_pos)
             return true
         end
     end
+    return false
+end
+
+function is_stop_coordinate_outside_limits(exc_stopnorthing_below, exc_stopnorthing_above, 
+        exc_stopeasting_below, exc_stopeasting_above, stop_pos)
+    x, y = stop_pos
+    ! isnothing(exc_stopnorthing_below) && y < exc_stopnorthing_below && return true
+    ! isnothing(exc_stopeasting_below) && x < exc_stopeasting_below && return true
+    ! isnothing(exc_stopnorthing_above) && y > exc_stopnorthing_above && return true
+    ! isnothing(exc_stopeasting_above) && x > exc_stopeasting_above && return true
     return false
 end
 
@@ -188,4 +237,10 @@ function StopPlace_lat_long(StopPlace::EzXML.Node)
     Longitude = findfirst("x:Centroid/x:Location/x:Longitude", StopPlace , NS)
     Latitude = findfirst("x:Centroid/x:Location/x:Latitude", StopPlace , NS)
     tryparse(Float64, nodecontent(Latitude)), tryparse(Float64, nodecontent(Longitude))
+end
+
+function print_stop(nt::NamedTuple)
+    printstyled("    ", rpad(nt.name, 40), color = :blue)
+    printstyled("    ", rpad(nt.x, 12), rpad(nt.y, 12), color = :blue)
+    printstyled(color = :normal)
 end

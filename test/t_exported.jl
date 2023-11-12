@@ -53,10 +53,14 @@ inc_operatorname_needle = r"Norled"
 inc_linename_needle = r"stad - Volda"
 @test length(journeys(;inc_date_match, inc_file_needle, exc_file_needle, exc_file_func, inc_time_match,
     inc_operatorname_needle, inc_linename_needle)) == 1
-@test length(journeys(; inc_destinationdisplayname_func = (n) -> occursin(r"(S|s)k(o|u)le", n))) == 75
+@test length(journeys(; inc_destinationdisplayname_func = (n) -> occursin(r"(S|s)k(o|u)l(e|a)", n))) == 75
 inc_servicejourneyname_needle = r"Flø"
 @test length(journeys(;inc_servicejourneyname_needle)) == 7
 @test isempty(journeys(;inc_date_match = "2020-01-31"))
+# This is slow, but still faster than when dropping exclusion based on stops.
+# Much better is to filter earlier, e.g. on file names.
+@test length(journeys(;exc_stopnorthing_below = 6858812, exc_stopnorthing_above = 6956376, exc_stopeasting_below = -54214, exc_stopeasting_above =  267772)) == 1303
+@time journeys(;exc_stopnorthing_below = 6858812, exc_stopnorthing_above = 6956376, exc_stopeasting_below = -54214, exc_stopeasting_above =  267772) # 57s
 # 448 seconds
 #@test length(journeys()) == 3741
 # 77 seconds

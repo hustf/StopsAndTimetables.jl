@@ -35,7 +35,7 @@ julia> begin
         inc_transportmode_needle = r"(W|w)ater"
     end;
 
-julia> # The following takes ~5 seconds the first time.
+julia> # The following takes ~8 seconds on first run.
 
 julia> display.(journeys(;inc_date_match, inc_file_needle, inc_time_match, inc_transportmode_needle));
 

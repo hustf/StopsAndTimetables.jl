@@ -51,6 +51,10 @@ const SelectorType = @NamedTuple begin
     exc_stopname_needle::Regex
     inc_stoppos_match::Union{Tuple{Int64, Int64}, Nothing}
     exc_stoppos_match::Union{Tuple{Int64, Int64}, Nothing}
+    exc_stopnorthing_below::Union{Int64, Nothing}
+    exc_stopnorthing_above::Union{Int64, Nothing}
+    exc_stopeasting_below::Union{Int64, Nothing}
+    exc_stopeasting_above::Union{Int64, Nothing}
 end
 
 
@@ -67,7 +71,7 @@ const DEFAULT_SELECTORS = SelectorType((
     #
     inc_linename_needle = r"",             # E.g.  "Ekspressen Volda-Ålesund"
     #
-    inc_destinationdisplayname_func = (n)->true,  # E.g. (s) -> occursin(r"(S|s)k(o|u)le", s) && occursin(r"(B|b)arn", s)
+    inc_destinationdisplayname_func = (n)->true,  # E.g. (s) -> occursin(r"(S|s)k(o|u)l(e|a)", s) && occursin(r"(B|b)arn", s)
     #
     inc_servicejourneyname_needle = r"",   # E.g.  "E39 "
     #
@@ -79,7 +83,15 @@ const DEFAULT_SELECTORS = SelectorType((
 
     inc_stoppos_match  = nothing,          # E.g. (67209, 6904657), an easting, northing position
 
-    exc_stoppos_match  = nothing          # E.g. (67209, 6904657), an easting, northing position
+    exc_stoppos_match  = nothing,          # E.g. (67209, 6904657), an easting, northing position
+
+    exc_stopnorthing_below = nothing,     # E.g. 6858812
+
+    exc_stopnorthing_above = nothing,     # E.g. 7062950
+    
+    exc_stopeasting_below = nothing,      # E.g. -54214
+    
+    exc_stopeasting_above = nothing,      # E.g. 267772
 
 ))
 
